@@ -1,0 +1,7 @@
+{
+  "name": "RoboLearn AI",
+  "description": "Learn. Code. Simulate. Build. - AI-powered interactive learning platform for robotics, electronics, and embedded systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
