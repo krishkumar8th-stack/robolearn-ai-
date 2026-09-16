@@ -1,4 +1,5 @@
 import type { ElectronicComponent } from '../types/index.js';
+import { createComponentLearningGuide } from './componentLearning.js';
 
 export type ComponentSourceStatus = 'catalog' | 'verified';
 
@@ -63,6 +64,7 @@ export function catalogEntryToComponent(entry: CatalogEntry): ElectronicComponen
     whyUsed: `Used in embedded systems, electronics, automation or robotics where ${entry.name} is appropriate.`,
     howItWorks: 'Exact electrical behavior depends on the manufacturer and variant. Consult the relevant datasheet before applying power or signals.',
     internalWorking: 'Variant-specific internal details are intentionally not guessed in the catalog layer.',
+    learningGuide: createComponentLearningGuide(entry.name, entry.category),
     specifications: [
       { key: 'Reference status', value: 'Catalog entry; verify exact variant' },
       { key: 'Category', value: entry.category }
