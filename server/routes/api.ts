@@ -1,216 +1,217 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { dbService } from '../db/database.js';
 import { geminiService } from '../services/ai/gemini.service.js';
 import { parseAndInterpretCode } from '../services/simulation/code-interpreter.js';
+import { rateLimit } from '../middleware/security.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'roblearn-ai-jwt-secret-key-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'roblearn-dev-fallback-secret';
 
-// Helper for JWT authentication
+// Express 4 does not automatically forward rejected async handlers. Wrap every
+// route handler once so unexpected backend/API errors reach the JSON error handler.
+const wrapAsync = (handler: any) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(handler(req, res, next)).catch(next);
+};
+for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+  const original = (router as any)[method].bind(router);
+  (router as any)[method] = (path: string, ...handlers: any[]) =>
+    original(path, ...handlers.map(handler => typeof handler === 'function' ? wrapAsync(handler) : handler));
+}
+
+router.use(rateLimit({ windowMs: 60_000, max: 180 }));
+const authLimiter = rateLimit({ windowMs: 5 * 60_000, max: 20, message: 'Too many authentication attempts. Please wait a few minutes.' });
+const aiLimiter = rateLimit({ windowMs: 60_000, max: 30, message: 'AI request limit reached. Please wait a moment and try again.' });
+
+function normalizeText(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
 function authenticateUser(req: Request): string | null {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-    return decoded.id;
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
+    return typeof decoded.id === 'string' && decoded.id ? decoded.id : null;
   } catch {
     return null;
   }
 }
 
+function requireUser(req: Request, res: Response): string | null {
+  const userId = authenticateUser(req);
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized. Please sign in again.' });
+    return null;
+  }
+  return userId;
+}
+
+router.get('/health', async (_req: Request, res: Response) => {
+  const ai = await geminiService.checkHealth();
+  return res.json({
+    status: 'ok',
+    service: 'RoboLearn AI Engine',
+    timestamp: new Date().toISOString(),
+    ai: ai.status,
+    aiModel: ai.model,
+    database: 'initialized'
+  });
+});
+
 // ---------------- AUTHENTICATION ----------------
-router.post('/auth/register', async (req: Request, res: Response) => {
+router.post('/auth/register', authLimiter, async (req: Request, res: Response) => {
+  const fullName = normalizeText(req.body?.fullName, 120);
+  const username = normalizeText(req.body?.username, 40);
+  const email = normalizeText(req.body?.email, 160).toLowerCase();
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (!email || !password || !fullName || !username) {
+    return res.status(400).json({ error: 'Please provide full name, username, email, and password.' });
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+  if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
+
+  const existing = await dbService.findUserByEmail(email);
+  if (existing) return res.status(409).json({ error: 'An account with this email address already exists.' });
+
   try {
-    const { fullName, username, email, password, experienceLevel, preferredProgrammingLanguage, preferredLanguage } = req.body;
-    if (!email || !password || !fullName || !username) {
-      return res.status(400).json({ error: 'Please provide full name, username, email, and password.' });
-    }
-
-    const existing = await dbService.findUserByEmail(email);
-    if (existing) {
-      return res.status(409).json({ error: 'An account with this email address already exists.' });
-    }
-
     const newUser = await dbService.createUser({
       fullName,
       username,
       email,
       role: 'user',
-      experienceLevel: experienceLevel || 'Beginner',
-      preferredProgrammingLanguage: preferredProgrammingLanguage || 'cpp',
-      preferredLanguage: preferredLanguage || 'en',
+      experienceLevel: req.body?.experienceLevel || 'Beginner',
+      preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage || 'cpp',
+      preferredLanguage: req.body?.preferredLanguage || 'en',
       lastActiveDate: new Date().toISOString(),
       password
     });
-
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
     const { passwordHash, ...userWithoutPassword } = newUser;
     return res.status(201).json({ token, user: userWithoutPassword });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Registration failed' });
+    if (err?.code === 11000) return res.status(409).json({ error: 'An account with this email address already exists.' });
+    throw err;
   }
 });
 
-router.post('/auth/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
-    }
+router.post('/auth/login', authLimiter, async (req: Request, res: Response) => {
+  const email = normalizeText(req.body?.email, 160).toLowerCase();
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
 
-    const user = await dbService.findUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
-    }
+  const user = await dbService.findUserByEmail(email);
+  if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
+  const match = await bcrypt.compare(password, user.passwordHash);
+  if (!match) return res.status(401).json({ error: 'Invalid email or password.' });
 
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
-    }
-
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    const { passwordHash, ...userWithoutPassword } = user;
-    return res.json({ token, user: userWithoutPassword });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Login failed' });
-  }
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const { passwordHash, ...userWithoutPassword } = user;
+  return res.json({ token, user: userWithoutPassword });
 });
 
 router.get('/auth/me', async (req: Request, res: Response) => {
-  const userId = authenticateUser(req);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
+  const userId = requireUser(req, res);
+  if (!userId) return;
   const user = await dbService.findUserById(userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   const { passwordHash, ...userWithoutPassword } = user;
   return res.json({ user: userWithoutPassword });
 });
 
 router.put('/auth/profile', async (req: Request, res: Response) => {
-  const userId = authenticateUser(req);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { fullName, experienceLevel, preferredProgrammingLanguage, preferredLanguage } = req.body;
-  const updated = await dbService.updateUserProgress(userId, {
-    fullName,
-    experienceLevel,
-    preferredProgrammingLanguage,
-    preferredLanguage
-  });
-
-  if (!updated) return res.status(404).json({ error: 'User not found' });
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const updates = {
+    fullName: req.body?.fullName ? normalizeText(req.body.fullName, 120) : undefined,
+    experienceLevel: req.body?.experienceLevel,
+    preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage,
+    preferredLanguage: req.body?.preferredLanguage
+  };
+  const updated = await dbService.updateUserProgress(userId, updates);
+  if (!updated) return res.status(404).json({ error: 'User not found.' });
   const { passwordHash, ...userWithoutPassword } = updated;
   return res.json({ user: userWithoutPassword });
 });
 
 // ---------------- COMPONENTS ----------------
 router.get('/components', async (req: Request, res: Response) => {
-  const { category, difficulty, search } = req.query;
-  const components = await dbService.getComponents(
-    category as string | undefined,
-    difficulty as string | undefined,
-    search as string | undefined
-  );
+  const category = normalizeText(req.query.category, 50) || undefined;
+  const difficulty = normalizeText(req.query.difficulty, 30) || undefined;
+  const search = normalizeText(req.query.search, 100) || undefined;
+  const allowedDifficulties = new Set(['Beginner', 'Intermediate', 'Advanced']);
+  if (difficulty && !allowedDifficulties.has(difficulty)) return res.status(400).json({ error: 'Invalid difficulty.' });
+  const components = await dbService.getComponents(category, difficulty, search);
   return res.json(components);
 });
 
 router.get('/components/:id', async (req: Request, res: Response) => {
-  const comp = await dbService.getComponentById(req.params.id);
-  if (!comp) return res.status(404).json({ error: 'Component not found' });
+  const id = normalizeText(req.params.id, 150);
+  const comp = await dbService.getComponentById(id);
+  if (!comp) return res.status(404).json({ error: 'Component not found.' });
   return res.json(comp);
 });
 
 router.post('/components/:id/learn', async (req: Request, res: Response) => {
-  const userId = authenticateUser(req);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const compId = normalizeText(req.params.id, 150);
+  if (!(await dbService.getComponentById(compId))) return res.status(404).json({ error: 'Component not found.' });
 
   const user = await dbService.findUserById(userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
-  const compId = req.params.id;
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   const learned = new Set(user.learnedComponents || []);
-  let xpGain = 0;
-  if (!learned.has(compId)) {
-    learned.add(compId);
-    xpGain = 30;
-  }
-
-  const updated = await dbService.updateUserProgress(userId, {
-    learnedComponents: Array.from(learned),
-    xp: user.xp + xpGain
-  });
-
+  const xpGain = learned.has(compId) ? 0 : 30;
+  learned.add(compId);
+  const updated = await dbService.updateUserProgress(userId, { learnedComponents: Array.from(learned), xp: user.xp + xpGain });
   return res.json({ success: true, xpEarned: xpGain, user: updated });
 });
 
 // ---------------- COURSES & LESSONS ----------------
-router.get('/courses', async (req: Request, res: Response) => {
-  const courses = await dbService.getCourses();
-  return res.json(courses);
-});
-
+router.get('/courses', async (_req: Request, res: Response) => res.json(await dbService.getCourses()));
 router.get('/courses/:id', async (req: Request, res: Response) => {
-  const course = await dbService.getCourseById(req.params.id);
-  if (!course) return res.status(404).json({ error: 'Course not found' });
+  const course = await dbService.getCourseById(normalizeText(req.params.id, 120));
+  if (!course) return res.status(404).json({ error: 'Course not found.' });
   return res.json(course);
 });
-
 router.get('/courses/:courseId/lessons/:lessonId', async (req: Request, res: Response) => {
-  const lesson = await dbService.getLessonById(req.params.courseId, req.params.lessonId);
-  if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+  const lesson = await dbService.getLessonById(normalizeText(req.params.courseId, 120), normalizeText(req.params.lessonId, 120));
+  if (!lesson) return res.status(404).json({ error: 'Lesson not found.' });
   return res.json(lesson);
 });
-
 router.post('/progress/complete-lesson', async (req: Request, res: Response) => {
-  const userId = authenticateUser(req);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { lessonId } = req.body;
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const lessonId = normalizeText(req.body?.lessonId, 120);
+  if (!lessonId) return res.status(400).json({ error: 'lessonId is required.' });
   const user = await dbService.findUserById(userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   const completed = new Set(user.completedLessons || []);
-  let xpGain = 0;
-  if (!completed.has(lessonId)) {
-    completed.add(lessonId);
-    xpGain = 50;
-  }
-
-  const updated = await dbService.updateUserProgress(userId, {
-    completedLessons: Array.from(completed),
-    xp: user.xp + xpGain
-  });
-
+  const xpGain = completed.has(lessonId) ? 0 : 50;
+  completed.add(lessonId);
+  const updated = await dbService.updateUserProgress(userId, { completedLessons: Array.from(completed), xp: user.xp + xpGain });
   return res.json({ success: true, xpEarned: xpGain, user: updated });
 });
 
 // ---------------- CHALLENGES ----------------
-router.get('/challenges', async (req: Request, res: Response) => {
-  const challenges = await dbService.getChallenges(req.query.difficulty as string | undefined);
-  return res.json(challenges);
-});
-
+router.get('/challenges', async (req: Request, res: Response) => res.json(await dbService.getChallenges(normalizeText(req.query.difficulty, 30) || undefined)));
 router.get('/challenges/:id', async (req: Request, res: Response) => {
-  const challenge = await dbService.getChallengeById(req.params.id);
-  if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
+  const challenge = await dbService.getChallengeById(normalizeText(req.params.id, 120));
+  if (!challenge) return res.status(404).json({ error: 'Challenge not found.' });
   return res.json(challenge);
 });
-
 router.post('/challenges/:id/submit', async (req: Request, res: Response) => {
-  const challenge = await dbService.getChallengeById(req.params.id);
-  if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
-
-  const { code } = req.body;
-  const interpretation = parseAndInterpretCode(code || '');
-
+  const challenge = await dbService.getChallengeById(normalizeText(req.params.id, 120));
+  if (!challenge) return res.status(404).json({ error: 'Challenge not found.' });
+  const code = typeof req.body?.code === 'string' ? req.body.code.slice(0, 100_000) : '';
+  const interpretation = parseAndInterpretCode(code);
   const userId = authenticateUser(req);
   let user = null;
   let xpEarned = 0;
-
   if (userId) {
     const existingUser = await dbService.findUserById(userId);
     if (existingUser) {
@@ -218,158 +219,79 @@ router.post('/challenges/:id/submit', async (req: Request, res: Response) => {
       if (!completed.has(challenge.id) && interpretation.success) {
         completed.add(challenge.id);
         xpEarned = challenge.xpReward;
-        user = await dbService.updateUserProgress(userId, {
-          completedChallenges: Array.from(completed),
-          xp: existingUser.xp + xpEarned
-        });
-      }
+        user = await dbService.updateUserProgress(userId, { completedChallenges: Array.from(completed), xp: existingUser.xp + xpEarned });
+      } else user = existingUser;
     }
   }
-
-  return res.json({
-    success: interpretation.success,
-    supported: interpretation.supported,
-    message: interpretation.message,
-    actions: interpretation.actions,
-    logs: interpretation.logs,
-    xpEarned,
-    user
-  });
+  return res.json({ success: interpretation.success, supported: interpretation.supported, message: interpretation.message, actions: interpretation.actions, logs: interpretation.logs, xpEarned, user });
 });
 
 // ---------------- PROJECTS ----------------
-router.get('/projects', async (req: Request, res: Response) => {
-  const projects = await dbService.getProjects();
-  return res.json(projects);
-});
-
+router.get('/projects', async (_req: Request, res: Response) => res.json(await dbService.getProjects()));
 router.get('/projects/:id', async (req: Request, res: Response) => {
-  const proj = await dbService.getProjectById(req.params.id);
-  if (!proj) return res.status(404).json({ error: 'Project not found' });
+  const proj = await dbService.getProjectById(normalizeText(req.params.id, 120));
+  if (!proj) return res.status(404).json({ error: 'Project not found.' });
   return res.json(proj);
 });
-
 router.post('/projects/:id/complete', async (req: Request, res: Response) => {
-  const userId = authenticateUser(req);
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  const proj = await dbService.getProjectById(req.params.id);
-  if (!proj) return res.status(404).json({ error: 'Project not found' });
-
+  const userId = requireUser(req, res);
+  if (!userId) return;
+  const proj = await dbService.getProjectById(normalizeText(req.params.id, 120));
+  if (!proj) return res.status(404).json({ error: 'Project not found.' });
   const user = await dbService.findUserById(userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
-
+  if (!user) return res.status(404).json({ error: 'User not found.' });
   const completed = new Set(user.completedProjects || []);
-  let xpGain = 0;
-  if (!completed.has(proj.id)) {
-    completed.add(proj.id);
-    xpGain = proj.xpReward;
-  }
-
-  const updated = await dbService.updateUserProgress(userId, {
-    completedProjects: Array.from(completed),
-    xp: user.xp + xpGain
-  });
-
+  const xpGain = completed.has(proj.id) ? 0 : proj.xpReward;
+  completed.add(proj.id);
+  const updated = await dbService.updateUserProgress(userId, { completedProjects: Array.from(completed), xp: user.xp + xpGain });
   return res.json({ success: true, xpEarned: xpGain, user: updated });
 });
 
 // ---------------- ACHIEVEMENTS ----------------
-router.get('/achievements', async (req: Request, res: Response) => {
-  const achievements = await dbService.getAchievements();
-  return res.json(achievements);
-});
+router.get('/achievements', async (_req: Request, res: Response) => res.json(await dbService.getAchievements()));
 
 // ---------------- REAL GEMINI AI APIS ----------------
-router.get('/ai/health', async (req: Request, res: Response) => {
-  const health = await geminiService.checkHealth();
-  return res.json(health);
+router.get('/ai/health', async (_req: Request, res: Response) => res.json(await geminiService.checkHealth()));
+router.post('/ai/tutor', aiLimiter, async (req: Request, res: Response) => {
+  const message = normalizeText(req.body?.message, 12_000);
+  if (!message) return res.status(400).json({ error: 'Message is required.' });
+  const history = Array.isArray(req.body?.history) ? req.body.history.slice(-10) : [];
+  const reply = await geminiService.chatTutor(message, history, req.body?.context);
+  return res.json({ reply });
 });
-
-router.post('/ai/tutor', async (req: Request, res: Response) => {
-  try {
-    const { message, history, context } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message is required' });
-
-    const reply = await geminiService.chatTutor(message, history || [], context);
-    return res.json({ reply });
-  } catch (err: any) {
-    console.error('AI Tutor error:', err);
-    return res.status(500).json({ error: err.message || 'AI Tutor request failed' });
-  }
+router.post('/ai/generate-code', aiLimiter, async (req: Request, res: Response) => {
+  const prompt = normalizeText(req.body?.prompt, 12_000);
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
+  return res.json(await geminiService.generateCode(prompt, normalizeText(req.body?.targetBoard, 100) || 'Arduino Uno', normalizeText(req.body?.language, 30) || 'cpp'));
 });
-
-router.post('/ai/generate-code', async (req: Request, res: Response) => {
-  try {
-    const { prompt, targetBoard, language } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
-
-    const result = await geminiService.generateCode(prompt, targetBoard, language);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('AI Code Generator error:', err);
-    return res.status(500).json({ error: err.message || 'Code generation failed' });
-  }
+router.post('/ai/explain-code', aiLimiter, async (req: Request, res: Response) => {
+  const code = normalizeText(req.body?.code, 100_000);
+  if (!code) return res.status(400).json({ error: 'Code is required.' });
+  return res.json(await geminiService.explainCode(code, normalizeText(req.body?.language, 30) || 'cpp'));
 });
-
-router.post('/ai/explain-code', async (req: Request, res: Response) => {
-  try {
-    const { code, language } = req.body;
-    if (!code) return res.status(400).json({ error: 'Code is required' });
-
-    const result = await geminiService.explainCode(code, language);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('AI Explain Code error:', err);
-    return res.status(500).json({ error: err.message || 'Code explanation failed' });
-  }
+router.post('/ai/debug-code', aiLimiter, async (req: Request, res: Response) => {
+  const code = normalizeText(req.body?.code, 100_000);
+  if (!code) return res.status(400).json({ error: 'Code is required.' });
+  return res.json(await geminiService.debugCode(code, normalizeText(req.body?.language, 30) || 'cpp', normalizeText(req.body?.errorMessage, 8_000), normalizeText(req.body?.hardwareContext, 4_000)));
 });
-
-router.post('/ai/debug-code', async (req: Request, res: Response) => {
-  try {
-    const { code, language, errorMessage, hardwareContext } = req.body;
-    if (!code) return res.status(400).json({ error: 'Code is required' });
-
-    const result = await geminiService.debugCode(code, language, errorMessage, hardwareContext);
-    return res.json(result);
-  } catch (err: any) {
-    console.error('AI Debugger error:', err);
-    return res.status(500).json({ error: err.message || 'Code debugging failed' });
-  }
+router.post('/ai/explain-component', aiLimiter, async (req: Request, res: Response) => {
+  const componentId = normalizeText(req.body?.componentId, 150);
+  if (!componentId) return res.status(400).json({ error: 'componentId is required.' });
+  const component = await dbService.getComponentById(componentId);
+  if (!component) return res.status(404).json({ error: 'Component not found.' });
+  return res.json({ explanation: await geminiService.explainComponent(component, normalizeText(req.body?.userQuestion, 6_000)) });
 });
-
-router.post('/ai/explain-component', async (req: Request, res: Response) => {
-  try {
-    const { componentId, userQuestion } = req.body;
-    const component = await dbService.getComponentById(componentId);
-    if (!component) return res.status(404).json({ error: 'Component not found' });
-
-    const reply = await geminiService.explainComponent(component, userQuestion);
-    return res.json({ explanation: reply });
-  } catch (err: any) {
-    console.error('AI Component Explain error:', err);
-    return res.status(500).json({ error: err.message || 'Component explanation failed' });
-  }
-});
-
-router.post('/ai/hint', async (req: Request, res: Response) => {
-  try {
-    const { challengeTitle, problem, currentCode, hintLevel } = req.body;
-    const hint = await geminiService.getHint(challengeTitle, problem, currentCode, hintLevel || 1);
-    return res.json({ hint });
-  } catch (err: any) {
-    console.error('AI Hint error:', err);
-    return res.status(500).json({ error: err.message || 'Hint request failed' });
-  }
+router.post('/ai/hint', aiLimiter, async (req: Request, res: Response) => {
+  return res.json({ hint: await geminiService.getHint(normalizeText(req.body?.challengeTitle, 300), normalizeText(req.body?.problem, 8_000), normalizeText(req.body?.currentCode, 80_000), Math.max(1, Math.min(3, Number(req.body?.hintLevel) || 1))) });
 });
 
 // ---------------- SIMULATION INTERPRETER ----------------
 router.post('/simulation/interpret', async (req: Request, res: Response) => {
-  const { code, language } = req.body;
-  if (!code) return res.status(400).json({ error: 'Code is required' });
-
-  const result = parseAndInterpretCode(code, language || 'cpp');
-  return res.json(result);
+  const code = typeof req.body?.code === 'string' ? req.body.code.slice(0, 100_000) : '';
+  if (!code) return res.status(400).json({ error: 'Code is required.' });
+  return res.json(parseAndInterpretCode(code, normalizeText(req.body?.language, 30) || 'cpp'));
 });
+
+router.use((_req: Request, res: Response) => res.status(404).json({ error: 'API endpoint not found.' }));
 
 export default router;
