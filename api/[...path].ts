@@ -39,7 +39,7 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use('/api', apiRouter);
+// The Vercel catch-all receives normalized /components, /auth/*, /ai/*, etc.
 app.use(apiRouter);
 
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
