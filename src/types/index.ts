@@ -55,6 +55,17 @@ export interface ComponentSpecification {
   value: string;
 }
 
+export interface ComponentLearningGuide {
+  simpleExplanation: string;
+  howItWorksStepByStep: string[];
+  inputsOutputs: string;
+  whereUsed: string[];
+  keyConcepts: string[];
+  miniProject: string;
+  quickQuiz: { question: string; options: string[]; correctIndex: number; explanation: string }[];
+  remember: string[];
+}
+
 export interface ElectronicComponent {
   id: string;
   name: string;
@@ -68,6 +79,7 @@ export interface ElectronicComponent {
   whyUsed: string;
   howItWorks: string;
   internalWorking: string;
+  learningGuide?: ComponentLearningGuide;
   specifications: ComponentSpecification[];
   pins: PinDefinition[];
   wiringGuide: {
