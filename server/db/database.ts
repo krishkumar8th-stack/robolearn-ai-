@@ -14,6 +14,8 @@ interface InMemoryStore {
   conversations: Map<string, { id: string; userId: string; title: string; messages: AIChatMessage[]; updatedAt: string }>;
 }
 
+type StoredUser = User & { passwordHash: string };
+
 const store: InMemoryStore = {
   users: new Map(),
   components: new Map(),
@@ -24,21 +26,17 @@ const store: InMemoryStore = {
   conversations: new Map()
 };
 
-// Seed detailed components already present in the product.
 for (const comp of SEED_COMPONENTS) store.components.set(comp.id, comp);
-
-// Add the 500+ reference catalog without overwriting the richer verified records above.
 for (const entry of COMPONENT_CATALOG) {
   if (!store.components.has(entry.id)) store.components.set(entry.id, catalogEntryToComponent(entry));
 }
-
 for (const course of SEED_COURSES) store.courses.set(course.id, course);
 for (const chal of SEED_CHALLENGES) store.challenges.set(chal.id, chal);
 for (const proj of SEED_PROJECTS) store.projects.set(proj.id, proj);
 for (const ach of SEED_ACHIEVEMENTS) store.achievements.set(ach.id, ach);
 
 const demoPasswordHash = bcrypt.hashSync('maker123', 10);
-const demoUser: User & { passwordHash: string } = {
+const demoUser: StoredUser = {
   id: 'user-demo-1',
   fullName: 'Alex River',
   username: 'maker_alex',
@@ -63,44 +61,77 @@ store.users.set(demoUser.id, demoUser);
 
 let isMongoConnected = false;
 
+function usersCollection() {
+  return mongoose.connection.db?.collection<StoredUser>('roblearn_users');
+}
+
 export async function initDatabase() {
   const mongoUri = process.env.MONGODB_URI;
   if (mongoUri && mongoUri.trim().length > 0) {
     try {
-      console.log('Connecting to MongoDB cluster at:', mongoUri.split('@').pop());
       await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
       isMongoConnected = true;
-      console.log('MongoDB connected successfully!');
+      const collection = usersCollection();
+      if (collection) {
+        await collection.createIndex({ email: 1 }, { unique: true });
+        await collection.updateOne({ _id: demoUser.id }, { $setOnInsert: { ...demoUser, _id: demoUser.id } }, { upsert: true });
+      }
+      console.log('MongoDB connected successfully; user data persistence enabled.');
     } catch (err: any) {
-      console.warn('MongoDB connection failed, falling back to persistent memory store:', err.message);
       isMongoConnected = false;
+      console.warn('MongoDB connection failed; using in-memory fallback:', err.message);
     }
   } else {
     console.log(`No MONGODB_URI provided. Initialized local data store with ${store.components.size} component records.`);
   }
 }
 
-export const dbService = {
-  async findUserByEmail(email: string) {
-    const normalized = email.toLowerCase().trim();
-    for (const user of store.users.values()) {
-      if (user.email.toLowerCase() === normalized) return user;
-    }
+async function findUserByEmail(email: string): Promise<StoredUser | null> {
+  const normalized = email.toLowerCase().trim();
+  if (isMongoConnected) {
+    const found = await usersCollection()?.findOne({ email: normalized });
+    if (found) return { ...found, id: found.id || String((found as any)._id) } as StoredUser;
     return null;
-  },
+  }
+  for (const user of store.users.values()) if (user.email.toLowerCase() === normalized) return user;
+  return null;
+}
 
-  async findUserById(id: string) {
-    return store.users.get(id) || null;
-  },
+async function findUserById(id: string): Promise<StoredUser | null> {
+  if (isMongoConnected) {
+    const found = await usersCollection()?.findOne({ _id: id });
+    return found ? ({ ...found, id: found.id || id } as StoredUser) : null;
+  }
+  return store.users.get(id) || null;
+}
+
+async function saveUser(user: StoredUser): Promise<StoredUser> {
+  if (isMongoConnected) {
+    const collection = usersCollection();
+    if (!collection) throw new Error('MongoDB is connected but its database handle is unavailable.');
+    await collection.replaceOne({ _id: user.id }, { ...user, _id: user.id }, { upsert: true });
+    return user;
+  }
+  store.users.set(user.id, user);
+  return user;
+}
+
+export const dbService = {
+  async findUserByEmail(email: string) { return findUserByEmail(email); },
+  async findUserById(id: string) { return findUserById(id); },
 
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'xp' | 'level' | 'streak' | 'completedLessons' | 'completedChallenges' | 'completedProjects' | 'learnedComponents' | 'achievements'> & { password: string }) {
-    const id = 'usr_' + Math.random().toString(36).substring(2, 9);
+    const normalizedEmail = userData.email.toLowerCase().trim();
+    const existing = await findUserByEmail(normalizedEmail);
+    if (existing) throw new Error('An account with this email address already exists.');
+
+    const id = 'usr_' + Math.random().toString(36).substring(2, 10);
     const passwordHash = await bcrypt.hash(userData.password, 10);
-    const newUser: User & { passwordHash: string } = {
+    const newUser: StoredUser = {
       id,
-      fullName: userData.fullName,
-      username: userData.username,
-      email: userData.email.toLowerCase().trim(),
+      fullName: userData.fullName.trim(),
+      username: userData.username.trim(),
+      email: normalizedEmail,
       role: userData.role || 'user',
       experienceLevel: userData.experienceLevel || 'Beginner',
       preferredLanguage: userData.preferredLanguage || 'en',
@@ -117,17 +148,16 @@ export const dbService = {
       createdAt: new Date().toISOString(),
       passwordHash
     };
-    store.users.set(id, newUser);
-    return newUser;
+    return saveUser(newUser);
   },
 
   async updateUserProgress(userId: string, updates: Partial<User>) {
-    const user = store.users.get(userId);
+    const user = await findUserById(userId);
     if (!user) return null;
-    const updated = { ...user, ...updates };
+    const updated: StoredUser = { ...user, ...updates };
     if (updated.xp !== undefined) updated.level = Math.floor(updated.xp / 200) + 1;
-    store.users.set(userId, updated);
-    return updated;
+    updated.lastActiveDate = new Date().toISOString();
+    return saveUser(updated);
   },
 
   async getComponents(category?: string, difficulty?: string, search?: string) {
@@ -135,22 +165,17 @@ export const dbService = {
     if (category) list = list.filter(c => c.category === category);
     if (difficulty) list = list.filter(c => c.difficulty === difficulty);
     if (search) {
-      const q = search.toLowerCase();
+      const q = search.toLowerCase().trim();
       list = list.filter(c => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.tagline.toLowerCase().includes(q));
     }
     return list;
   },
-
-  async getComponentById(id: string) {
-    return store.components.get(id) || null;
-  },
-
+  async getComponentById(id: string) { return store.components.get(id) || null; },
   async getCourses() { return Array.from(store.courses.values()).sort((a, b) => a.level - b.level); },
   async getCourseById(id: string) { return store.courses.get(id) || null; },
   async getLessonById(courseId: string, lessonId: string) {
     const course = store.courses.get(courseId);
-    if (!course) return null;
-    return course.lessons.find(l => l.id === lessonId) || null;
+    return course?.lessons.find(l => l.id === lessonId) || null;
   },
   async getChallenges(difficulty?: string) {
     let list = Array.from(store.challenges.values());
