@@ -1,267 +1,141 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Sparkles, Play, Copy, Check, Download, Box, Cpu, ArrowRight,
-  AlertTriangle, Lightbulb, Bug, WandSparkles, RotateCcw, Send,
-  CheckCircle2, Loader2
-} from 'lucide-react';
+import { AlertTriangle, Bug, Check, ChevronDown, Clipboard, Code2, Download, ExternalLink, FileCode2, Lightbulb, Loader2, Play, RotateCcw, Send, Settings2, Sparkles, WandSparkles, X } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { api } from '../services/api';
 import { useSimulation } from '../contexts/SimulationContext';
 import { AICodeGenerationResult, AIDebugResult } from '../types/index';
 
 const SAMPLE_PROMPTS = [
-  'Make an Arduino robot detect an obstacle with ultrasonic sensor and turn left',
-  'Blink an LED with 500ms intervals and print serial state',
-  'Sweep an SG90 micro servo from 0 to 180 degrees smoothly',
-  'Read analog temperature from TMP36 sensor and trigger buzzer above 30°C',
-  'Control ESP32 onboard LED via Wi-Fi web server'
+  'Build a responsive React todo app with local persistence',
+  'Write a C++ program that sorts an array and explains the algorithm',
+  'Create an Arduino obstacle-avoiding robot using an HC-SR04 and servo',
+  'Make a Python script that reads a CSV and calculates summary statistics',
+  'Build an ESP32 web server that controls an LED',
 ];
 
+const LANGUAGES = [
+  ['cpp', 'C++'], ['python', 'Python'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'],
+  ['java', 'Java'], ['go', 'Go'], ['rust', 'Rust'], ['arduino', 'Arduino C++'],
+];
+
+const BOARDS = ['No hardware', 'Arduino Uno', 'ESP32 NodeMCU', 'Raspberry Pi Pico'];
 type ToolState = 'idle' | 'loading' | 'success' | 'error';
 
 export const AICodeGeneratorPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { runActions, appendLog } = useSimulation();
   const [prompt, setPrompt] = useState('');
-  const [targetBoard, setTargetBoard] = useState('Arduino Uno');
-  const [language, setLanguage] = useState<'cpp' | 'python'>('cpp');
+  const [language, setLanguage] = useState('cpp');
+  const [targetBoard, setTargetBoard] = useState('No hardware');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<AICodeGenerationResult | null>(null);
   const [code, setCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toolState, setToolState] = useState<ToolState>('idle');
-  const [toolMessage, setToolMessage] = useState('');
-  const [debugResult, setDebugResult] = useState<AIDebugResult | null>(null);
+  const [status, setStatus] = useState('Ready');
+  const [activePanel, setActivePanel] = useState<'overview' | 'explain' | 'debug'>('overview');
   const [explanation, setExplanation] = useState<{ summary: string; lineByLine: { line: number; explanation: string }[]; concepts: string[] } | null>(null);
-  const [activePanel, setActivePanel] = useState<'wiring' | 'explain' | 'debug'>('wiring');
+  const [debugResult, setDebugResult] = useState<AIDebugResult | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [runState, setRunState] = useState<ToolState>('idle');
 
-  const { runActions, appendLog } = useSimulation();
-  const navigate = useNavigate();
-  const editorLanguage = language === 'cpp' ? 'cpp' : 'python';
+  const editorLanguage = language === 'arduino' ? 'cpp' : language;
+  const wiringCount = useMemo(() => result?.wiring?.length || 0, [result]);
 
-  const showTool = (state: ToolState, message: string) => {
-    setToolState(state);
-    setToolMessage(message);
-  };
-
-  const handleGenerate = async (queryText?: string) => {
-    const textToRun = queryText || prompt;
-    if (!textToRun.trim()) return;
-    setIsLoading(true);
-    setError(null);
-    setDebugResult(null);
-    setExplanation(null);
+  const generate = async (text?: string) => {
+    const query = (text ?? prompt).trim();
+    if (!query || isLoading) return;
+    setPrompt(query);
+    setIsLoading(true); setError(null); setStatus('Generating…'); setExplanation(null); setDebugResult(null);
     try {
-      const res = await api.aiGenerateCode(textToRun, targetBoard, language);
-      setResult(res);
-      setCode(res.code || '');
-      showTool('success', 'Code and circuit plan generated successfully.');
-    } catch (err: any) {
-      const message = err?.message || 'Failed to generate firmware code. Please try again.';
-      setError(message);
-      showTool('error', message);
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await api.aiGenerateCode(query, targetBoard, language);
+      setResult(res); setCode(res.code || ''); setStatus('Generated');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not generate code.';
+      setError(message); setStatus('Error');
+    } finally { setIsLoading(false); }
   };
 
-  const handleExplain = async () => {
-    if (!code.trim()) return;
-    showTool('loading', 'Gemini is explaining your code...');
-    try {
-      const res = await api.aiExplainCode(code, language);
-      setExplanation(res);
-      setActivePanel('explain');
-      showTool('success', 'Code explanation ready.');
-    } catch (err: any) {
-      showTool('error', err?.message || 'Could not explain this code.');
-    }
+  const explain = async () => {
+    if (!code.trim() || isLoading) return;
+    setIsLoading(true); setError(null); setStatus('Explaining…');
+    try { setExplanation(await api.aiExplainCode(code, language)); setActivePanel('explain'); setStatus('Explanation ready'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not explain the code.'); setStatus('Error'); }
+    finally { setIsLoading(false); }
   };
 
-  const handleDebug = async () => {
-    if (!code.trim()) return;
-    showTool('loading', 'Checking syntax, logic and hardware assumptions...');
-    try {
-      const res = await api.aiDebugCode(code, language, undefined, targetBoard);
-      setDebugResult(res);
-      setActivePanel('debug');
-      showTool('success', 'AI debugging analysis ready.');
-    } catch (err: any) {
-      showTool('error', err?.message || 'Could not debug this code.');
-    }
+  const debug = async () => {
+    if (!code.trim() || isLoading) return;
+    setIsLoading(true); setError(null); setStatus('Debugging…');
+    try { setDebugResult(await api.aiDebugCode(code, language, undefined, targetBoard)); setActivePanel('debug'); setStatus('Debug analysis ready'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not debug the code.'); setStatus('Error'); }
+    finally { setIsLoading(false); }
   };
 
-  const handleImprove = async () => {
-    if (!code.trim()) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const improvementPrompt = `Improve the following ${language} firmware for ${targetBoard}. Preserve the requested behavior, fix obvious bugs, improve readability and reliability, and return a complete replacement program.\n\nCURRENT CODE:\n${code}`;
-      const res = await api.aiGenerateCode(improvementPrompt, targetBoard, language);
-      setResult(res);
-      setCode(res.code || '');
-      showTool('success', 'Improved firmware generated. Review the changes before using hardware.');
-    } catch (err: any) {
-      setError(err?.message || 'Could not improve the code.');
-      showTool('error', err?.message || 'Could not improve the code.');
-    } finally {
-      setIsLoading(false);
-    }
+  const improve = async () => {
+    if (!code.trim() || isLoading) return;
+    await generate(`Improve this ${language} program for ${targetBoard}. Preserve its intended behavior, fix clear bugs, improve readability and reliability, then return a complete replacement.\n\nCURRENT CODE:\n${code}`);
   };
 
-  const handleRun = async () => {
-    if (!code.trim()) return;
+  const runSimulation = async () => {
+    if (!code.trim() || runState === 'loading') return;
     setRunState('loading');
     try {
-      const res = await api.interpretCode(code, language);
+      const res = await api.interpretCode(code, editorLanguage);
       if (res.success && res.actions?.length) {
-        appendLog(`[AI-CODE] ${res.message}`, 'info');
+        appendLog(`[AI-STUDIO] ${res.message}`, 'info');
         res.logs?.forEach(log => appendLog(`[SIM] ${log}`, 'info'));
         runActions(res.actions, [`[RUN] ${res.actions.length} simulation action(s) loaded.`]);
         setRunState('success');
-      } else {
-        setRunState('error');
-        setToolMessage(res.message || 'This code is not currently supported by the simulator.');
-      }
-    } catch (err: any) {
-      setRunState('error');
-      setToolMessage(err?.message || 'Simulation request failed.');
-    }
+      } else { setRunState('error'); setError(res.message || 'This code is not supported by the current simulator.'); }
+    } catch (e) { setRunState('error'); setError(e instanceof Error ? e.message : 'Simulation failed.'); }
   };
 
-  const handleSendToSimulator = () => {
-    if (!result) return;
-    appendLog(`[AI-GENERATOR] Loading generated firmware for ${targetBoard}.`, 'info');
-    if (result.simulationActions?.length) {
-      runActions(result.simulationActions, [
-        `[GENERATED] Firmware for ${targetBoard} loaded into virtual MCU.`,
-        `[CIRCUIT] ${result.wiring.length} pin connection(s) supplied by AI.`
-      ]);
-    }
-    navigate('/lab3d');
-  };
-
-  const handleCopy = async () => {
+  const copy = async () => {
     if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      showTool('error', 'Clipboard access was blocked by the browser.');
-    }
+    try { await navigator.clipboard.writeText(code); setCopied(true); window.setTimeout(() => setCopied(false), 1500); } catch { setError('Clipboard access was blocked by the browser.'); }
   };
 
-  const handleDownload = () => {
+  const download = () => {
     if (!code) return;
+    const ext = editorLanguage === 'python' ? 'py' : editorLanguage === 'typescript' ? 'ts' : editorLanguage === 'javascript' ? 'js' : editorLanguage === 'java' ? 'java' : editorLanguage === 'go' ? 'go' : editorLanguage === 'rust' ? 'rs' : editorLanguage === 'cpp' ? 'cpp' : 'ino';
     const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = language === 'python' ? 'generated_code.py' : 'generated_sketch.ino';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = `robolearn-generated.${ext}`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   };
-
-  const wiringCount = useMemo(() => result?.wiring?.length || 0, [result]);
 
   return (
-    <main className="min-h-screen w-full max-w-7xl mx-auto px-4 py-5 sm:px-6 sm:py-7 text-slate-100">
-      <header className="mb-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-800/50 bg-indigo-950/60 px-3 py-1 text-xs font-semibold text-indigo-300">
-          <Sparkles className="h-3.5 w-3.5" /> Real Gemini Embedded AI Engine
-        </div>
-        <h1 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight">Robotics & Firmware AI Code Generator</h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-400">Prompt → firmware → circuit guidance → explain/debug → simulate. Edit the generated code before running it.</p>
+    <main className="mx-auto min-h-[calc(100vh-4rem)] w-full max-w-[1500px] px-3 py-4 text-slate-900 dark:text-slate-100 sm:px-5 sm:py-5">
+      <header className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#0b1018] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-500/10 text-cyan-500"><Code2 className="h-5 w-5" /></div><div><div className="flex items-center gap-2"><h1 className="text-base font-bold sm:text-lg">RoboLearn AI Code Studio</h1><span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-500">REAL AI</span></div><p className="text-[11px] text-slate-400">Describe any software or embedded task → get code, explanations and optional simulation.</p></div></div>
+        <div className="flex items-center gap-2"><span className={`rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${status === 'Error' ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>{isLoading && <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />}{status}</span><button onClick={() => setShowSettings(v => !v)} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800" title="Settings"><Settings2 className="h-4 w-4" /></button></div>
       </header>
 
-      <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:p-5 shadow-xl">
-        <label htmlFor="ai-code-prompt" className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-300">What do you want to build?</label>
-        <textarea
-          id="ai-code-prompt"
-          rows={3}
-          value={prompt}
-          onChange={e => setPrompt(e.target.value)}
-          onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleGenerate(); }}
-          placeholder="e.g. Make an Arduino robot detect an obstacle with ultrasonic sensor and turn left..."
-          className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-        />
-        <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-3">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-400">Hardware
-              <select value={targetBoard} onChange={e => setTargetBoard(e.target.value)} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500">
-                <option>Arduino Uno</option><option>ESP32 NodeMCU</option><option>Raspberry Pi Pico</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-400">Language
-              <select value={language} onChange={e => setLanguage(e.target.value as 'cpp' | 'python')} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-500">
-                <option value="cpp">Arduino C++</option><option value="python">MicroPython</option>
-              </select>
-            </label>
-          </div>
-          <button onClick={() => handleGenerate()} disabled={isLoading || !prompt.trim()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 px-5 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">
-            {isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Synthesizing...</> : <><Sparkles className="h-4 w-4" /> Generate Code & Circuit</>}
-          </button>
-        </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          <span className="shrink-0 py-1 text-[11px] font-semibold text-slate-500">Examples:</span>
-          {SAMPLE_PROMPTS.map((sample, i) => <button key={i} onClick={() => { setPrompt(sample); handleGenerate(sample); }} className="shrink-0 rounded-lg border border-slate-700/70 bg-slate-800/80 px-3 py-1.5 text-left text-xs text-slate-300 transition hover:bg-slate-800">{sample}</button>)}
-        </div>
-        <p className="mt-2 text-[11px] text-slate-500">Tip: Ctrl/Cmd + Enter generates. Never connect generated wiring to hardware without checking the component datasheet.</p>
+      {showSettings && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/60"><label className="text-xs font-semibold text-slate-500">Language <select value={language} onChange={e => setLanguage(e.target.value)} className="ml-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950">{LANGUAGES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label className="text-xs font-semibold text-slate-500">Hardware <select value={targetBoard} onChange={e => setTargetBoard(e.target.value)} className="ml-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950">{BOARDS.map(board => <option key={board}>{board}</option>)}</select></label><button onClick={() => setShowSettings(false)} className="ml-auto rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button></div>}
+
+      <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-[#0b1018] sm:p-4">
+        <div className="flex items-start gap-3"><div className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-cyan-500/10 text-cyan-500"><Sparkles className="h-4 w-4" /></div><div className="min-w-0 flex-1"><textarea value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate(); }} rows={3} maxLength={12000} placeholder="Describe what you want to build… e.g. Create a React dashboard with search, dark mode and local storage" className="w-full resize-none bg-transparent p-1 text-sm leading-6 outline-none placeholder:text-slate-400" /><div className="flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 gap-2 overflow-x-auto">{SAMPLE_PROMPTS.map(sample => <button key={sample} onClick={() => generate(sample)} className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[11px] text-slate-600 hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">{sample}</button>)}</div><button onClick={() => generate()} disabled={isLoading || !prompt.trim()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 text-xs font-bold text-slate-950 hover:bg-cyan-400 disabled:opacity-40"><Send className="h-3.5 w-3.5" /> Generate</button></div></div></div>
       </section>
 
-      {error && <div role="alert" className="mb-5 flex items-start gap-2 rounded-xl border border-rose-800/60 bg-rose-950/40 p-4 text-xs text-rose-300"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
-      {toolMessage && <div aria-live="polite" className="mb-5 flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-xs text-slate-300"><CheckCircle2 className="h-4 w-4 text-emerald-400" />{toolMessage}</div>}
+      {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-500"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
 
-      {result && <section className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <div className="xl:col-span-7 rounded-2xl border border-slate-800 bg-slate-900 p-3 sm:p-4 shadow-xl">
-          <div className="mb-3 flex flex-col gap-3 border-b border-slate-800 pb-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2"><span className="rounded bg-cyan-950 px-2.5 py-1 font-mono text-xs font-bold text-cyan-400">{language.toUpperCase()}</span><span className="text-xs text-slate-400">Editable • {targetBoard}</span></div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={handleRun} disabled={runState === 'loading'} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50"><Play className="h-3.5 w-3.5" /> {runState === 'loading' ? 'Running...' : 'Run Simulation'}</button>
-              <button onClick={handleExplain} disabled={toolState === 'loading'} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"><Lightbulb className="h-3.5 w-3.5" /> Explain</button>
-              <button onClick={handleDebug} disabled={toolState === 'loading'} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"><Bug className="h-3.5 w-3.5" /> Debug</button>
-              <button onClick={handleImprove} disabled={isLoading} className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-700/60 bg-indigo-950/50 px-3 py-2 text-xs font-semibold text-indigo-200 hover:bg-indigo-900/50"><WandSparkles className="h-3.5 w-3.5" /> Improve</button>
-            </div>
-          </div>
-          <div className="h-[440px] overflow-hidden rounded-xl border border-slate-800 sm:h-[520px]">
-            <Editor height="100%" language={editorLanguage} theme="vs-dark" value={code} onChange={value => setCode(value || '')} options={{ minimap: { enabled: false }, fontSize: 13, automaticLayout: true, padding: { top: 12 }, scrollBeyondLastLine: false, wordWrap: 'on' }} />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={handleCopy} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700">{copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}{copied ? 'Copied' : 'Copy Code'}</button>
-            <button onClick={handleDownload} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"><Download className="h-3.5 w-3.5" /> Download</button>
-            <button onClick={() => setCode(result.code)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"><RotateCcw className="h-3.5 w-3.5" /> Restore Generated</button>
-            <button onClick={handleSendToSimulator} className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400"><Send className="h-3.5 w-3.5" /> Open 3D Lab</button>
-          </div>
+      {!result && !isLoading && <section className="grid min-h-[300px] place-items-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center dark:border-slate-700 dark:bg-slate-900/30"><div className="max-w-md"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-cyan-500/10 text-cyan-500"><FileCode2 className="h-7 w-7" /></div><h2 className="mt-4 text-lg font-bold">Your code workspace</h2><p className="mt-2 text-xs leading-6 text-slate-500">Ask for an app, algorithm, script, API, website, embedded program or robotics firmware. The AI returns editable code and keeps hardware metadata separate when it applies.</p></div></section>}
+
+      {(result || isLoading) && <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#0d1117] shadow-xl dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-2.5"><span className="rounded-md bg-cyan-500/10 px-2 py-1 font-mono text-[10px] font-bold text-cyan-400">{language}</span><span className="text-[10px] text-slate-500">{targetBoard}</span><div className="ml-auto flex flex-wrap gap-1.5"><button onClick={runSimulation} disabled={runState === 'loading' || !code} className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-[10px] font-bold text-slate-950 disabled:opacity-40"><Play className="h-3 w-3" />{runState === 'loading' ? 'Running' : 'Run'}</button><button onClick={explain} disabled={isLoading || !code} className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800 disabled:opacity-40"><Lightbulb className="h-3 w-3" />Explain</button><button onClick={debug} disabled={isLoading || !code} className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-[10px] text-slate-300 hover:bg-slate-800 disabled:opacity-40"><Bug className="h-3 w-3" />Debug</button><button onClick={improve} disabled={isLoading || !code} className="inline-flex items-center gap-1 rounded-lg border border-indigo-700/60 bg-indigo-950/40 px-2.5 py-1.5 text-[10px] text-indigo-200 disabled:opacity-40"><WandSparkles className="h-3 w-3" />Improve</button></div></div>
+          <div className="h-[560px]"><Editor height="100%" language={editorLanguage} theme="vs-dark" value={code} onChange={value => setCode(value || '')} options={{ minimap: { enabled: true }, fontSize: 13, automaticLayout: true, padding: { top: 14 }, scrollBeyondLastLine: false, wordWrap: 'on', smoothScrolling: true }} loading={<div className="grid h-full place-items-center text-xs text-slate-500">Loading editor…</div>} /></div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-800 px-3 py-2.5"><button onClick={copy} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-2.5 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700">{copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Clipboard className="h-3 w-3" />}{copied ? 'Copied' : 'Copy'}</button><button onClick={download} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-2.5 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"><Download className="h-3 w-3" />Download</button>{result && <button onClick={() => setCode(result.code)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-2.5 py-1.5 text-[10px] text-slate-300 hover:bg-slate-700"><RotateCcw className="h-3 w-3" />Restore</button>}{result?.simulationSupported && <button onClick={() => navigate('/lab3d')} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-cyan-300 hover:bg-cyan-500/20"><ExternalLink className="h-3 w-3" />3D Lab</button>}</div>
         </div>
 
-        <aside className="flex flex-col gap-5 xl:col-span-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-xl">
-            <div className="mb-3 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-              {(['wiring', 'explain', 'debug'] as const).map(panel => <button key={panel} onClick={() => setActivePanel(panel)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${activePanel === panel ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>{panel === 'wiring' ? `Wiring (${wiringCount})` : panel === 'explain' ? 'Explanation' : 'Debug'}</button>)}
-            </div>
-
-            {activePanel === 'wiring' && <div className="space-y-2">
-              {result.wiring?.length ? result.wiring.map((w, idx) => <div key={idx} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs"><div className="flex items-center justify-between gap-2 font-bold"><span className="text-cyan-400">{w.from}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-500" /><span className="text-indigo-400">{w.to}</span></div>{w.note && <p className="mt-1 text-[11px] text-slate-400">{w.note}</p>}</div>) : <p className="text-xs text-slate-500">No wiring connections were returned.</p>}
-              <div className="mt-3 rounded-xl border border-amber-800/40 bg-amber-950/20 p-3 text-[11px] text-amber-200">Verify voltage, polarity, current limits and pinout against the exact hardware before physical assembly.</div>
-            </div>}
-
-            {activePanel === 'explain' && <div className="space-y-3">
-              {explanation ? <><p className="text-sm leading-relaxed text-slate-300">{explanation.summary}</p><div className="flex flex-wrap gap-1.5">{explanation.concepts?.map((c, i) => <span key={i} className="rounded-full bg-indigo-950 px-2 py-1 text-[11px] text-indigo-300">{c}</span>)}</div><div className="max-h-72 space-y-2 overflow-auto pr-1">{explanation.lineByLine?.map(item => <div key={item.line} className="rounded-lg bg-slate-950 p-2.5 text-xs"><span className="font-mono text-cyan-400">L{item.line}</span><span className="ml-2 text-slate-300">{item.explanation}</span></div>)}</div></> : <div className="py-8 text-center text-xs text-slate-500">Click Explain to analyze the current editor code.</div>}
-            </div>}
-
-            {activePanel === 'debug' && <div className="space-y-3">
-              {debugResult ? <><div className="rounded-xl bg-rose-950/20 p-3"><p className="text-xs font-bold text-rose-300">Problem</p><p className="mt-1 text-xs text-slate-300">{debugResult.problem}</p></div><div className="rounded-xl bg-slate-950 p-3"><p className="text-xs font-bold text-amber-300">Cause</p><p className="mt-1 text-xs text-slate-300">{debugResult.cause}</p></div><div className="rounded-xl bg-slate-950 p-3"><p className="text-xs font-bold text-emerald-300">Solution</p><p className="mt-1 text-xs text-slate-300">{debugResult.solution}</p></div><button onClick={() => setCode(debugResult.correctedCode)} className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400">Use Corrected Code</button><p className="text-[11px] text-slate-500">Confidence: {debugResult.confidence}</p></> : <div className="py-8 text-center text-xs text-slate-500">Click Debug to inspect the current editor code.</div>}
-            </div>}
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-xl">
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-bold"><Cpu className="h-4 w-4 text-cyan-400" /> Required Components</h2>
-            <div className="flex flex-wrap gap-2">{result.requiredComponents?.map((item, i) => <span key={i} className="rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-[11px] text-slate-300">{item}</span>)}</div>
-            {result.possibleErrors?.length ? <div className="mt-4"><h3 className="mb-2 flex items-center gap-2 text-xs font-bold text-amber-300"><AlertTriangle className="h-3.5 w-3.5" /> Watch Out</h3><ul className="list-disc space-y-1 pl-4 text-[11px] text-slate-400">{result.possibleErrors.map((item, i) => <li key={i}>{item}</li>)}</ul></div> : null}
+        <aside className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0b1018]">
+          <div className="flex border-b border-slate-200 dark:border-slate-800"><button onClick={() => setActivePanel('overview')} className={`flex-1 px-3 py-3 text-[11px] font-semibold ${activePanel === 'overview' ? 'border-b-2 border-cyan-500 text-cyan-500' : 'text-slate-500'}`}>Overview</button><button onClick={() => setActivePanel('explain')} className={`flex-1 px-3 py-3 text-[11px] font-semibold ${activePanel === 'explain' ? 'border-b-2 border-cyan-500 text-cyan-500' : 'text-slate-500'}`}>Explain</button><button onClick={() => setActivePanel('debug')} className={`flex-1 px-3 py-3 text-[11px] font-semibold ${activePanel === 'debug' ? 'border-b-2 border-cyan-500 text-cyan-500' : 'text-slate-500'}`}>Debug</button></div>
+          <div className="max-h-[635px] overflow-y-auto p-4">
+            {activePanel === 'overview' && result && <div className="space-y-5"><div><div className="mb-2 text-xs font-bold">What the AI built</div><p className="text-xs leading-6 text-slate-500 dark:text-slate-400">{result.explanation}</p></div><div><div className="mb-2 flex items-center justify-between text-xs font-bold"><span>Required</span><span className="text-[10px] font-normal text-slate-400">{result.requiredComponents?.length || 0}</span></div><div className="flex flex-wrap gap-1.5">{(result.requiredComponents || []).map(item => <span key={item} className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] text-slate-600 dark:bg-slate-900 dark:text-slate-300">{item}</span>)}</div></div><div><div className="mb-2 flex items-center justify-between text-xs font-bold"><span>Wiring / connections</span><span className="text-[10px] font-normal text-slate-400">{wiringCount}</span></div>{result.wiring?.length ? <div className="space-y-2">{result.wiring.map((wire, i) => <div key={i} className="rounded-lg border border-slate-200 p-2.5 text-[10px] dark:border-slate-800"><div className="font-semibold">{wire.from} → {wire.to}</div><div className="mt-1 text-slate-500">{wire.description}</div></div>)}</div> : <p className="text-[10px] text-slate-500">No hardware wiring required.</p>}</div><div><div className="mb-2 text-xs font-bold">Functions & APIs</div><div className="flex flex-wrap gap-1.5">{(result.functionsUsed || []).map(item => <code key={item} className="rounded bg-slate-100 px-2 py-1 text-[10px] dark:bg-slate-900">{item}</code>)}</div></div><div><div className="mb-2 text-xs font-bold">Possible issues</div><div className="space-y-1.5">{(result.possibleErrors || []).map(item => <div key={item} className="text-[10px] text-slate-500">• {item}</div>)}</div></div></div>}
+            {activePanel === 'overview' && !result && <div className="text-center text-xs text-slate-500">Generating workspace…</div>}
+            {activePanel === 'explain' && <div className="space-y-4">{explanation ? <><div><h3 className="text-sm font-bold">Summary</h3><p className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{explanation.summary}</p></div><div><h3 className="text-sm font-bold">Concepts</h3><div className="mt-2 flex flex-wrap gap-1.5">{explanation.concepts.map(c => <span key={c} className="rounded-lg bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-600 dark:text-cyan-300">{c}</span>)}</div></div><div><h3 className="text-sm font-bold">Line-by-line</h3><div className="mt-2 space-y-2">{explanation.lineByLine.slice(0, 80).map(item => <div key={item.line} className="rounded-lg border border-slate-200 p-2.5 dark:border-slate-800"><div className="font-mono text-[10px] text-cyan-500">Line {item.line}</div><p className="mt-1 text-[10px] leading-5 text-slate-500">{item.explanation}</p></div>)}</div></div></> : <div className="text-xs text-slate-500">Press Explain to ask the AI about the current editor contents.</div>}</div>}
+            {activePanel === 'debug' && <div>{debugResult ? <div className="space-y-4"><div><h3 className="text-sm font-bold">Problem</h3><p className="mt-1 text-xs leading-6 text-slate-500">{debugResult.problem}</p></div><div><h3 className="text-sm font-bold">Likely cause</h3><p className="mt-1 text-xs leading-6 text-slate-500">{debugResult.cause}</p></div><div><h3 className="text-sm font-bold">Fix</h3><p className="mt-1 text-xs leading-6 text-slate-500">{debugResult.solution}</p></div><div><h3 className="text-sm font-bold">AI explanation</h3><p className="mt-1 text-xs leading-6 text-slate-500">{debugResult.explanation}</p></div>{debugResult.correctedCode && <button onClick={() => setCode(debugResult.correctedCode)} className="w-full rounded-xl bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400">Use corrected code</button>}</div> : <div className="text-xs text-slate-500">Press Debug to inspect the current code for syntax, logic and context-specific issues.</div>}</div>}
           </div>
         </aside>
       </section>}
