@@ -70,6 +70,7 @@ const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: Elec
   { name: 'Brushless DC Motor 2205', category: 'actuators' },
   { name: 'Brushless DC Motor 2306', category: 'actuators' },
   { name: 'ESC 30A Brushless Motor Controller', category: 'actuators' },
+  { name: 'Brushless DC Motor 2812', category: 'actuators' },
   { name: 'L298N Motor Driver Module', category: 'power' },
   { name: 'TB6612FNG Motor Driver', category: 'power' },
   { name: 'BTS7960 Motor Driver', category: 'power' },
@@ -78,15 +79,15 @@ const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: Elec
   { name: 'A4988 Stepper Driver', category: 'power' },
   { name: 'TMC2209 Stepper Driver', category: 'power' },
   { name: 'Cytron MDD10A', category: 'power' },
+  { name: 'TP4056 Li-Ion Charger Module', category: 'power' },
+  { name: '3S LiPo Battery Pack', category: 'power' },
   { name: 'HC-05 Bluetooth Module', category: 'communication' },
   { name: 'nRF24L01+', category: 'communication' },
   { name: 'LoRa SX1278 Ra-02', category: 'communication' },
   { name: 'NEO-6M GPS Module', category: 'communication' },
   { name: 'MCP2515 CAN Module', category: 'communication' },
   { name: 'MAX485 RS485 Module', category: 'communication' },
-  { name: 'W5500 Ethernet Module', category: 'communication' },
-  { name: 'TP4056 Li-Ion Charger Module', category: 'power' },
-  { name: 'Brushless DC Motor 2812', category: 'actuators' }
+  { name: 'W5500 Ethernet Module', category: 'communication' }
 ];
 
 function normalizedName(value: string) {
