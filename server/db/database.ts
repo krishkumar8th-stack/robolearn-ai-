@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { User, ElectronicComponent, Course, CodingChallenge, RoboticsProject, Achievement, AIChatMessage } from '../../src/types/index.js';
 import { SEED_COMPONENTS, SEED_COURSES, SEED_CHALLENGES, SEED_PROJECTS, SEED_ACHIEVEMENTS } from './seedData.js';
+import { COMPONENT_CATALOG, catalogEntryToComponent } from '../../src/data/componentCatalog.js';
 
 interface InMemoryStore {
   users: Map<string, User & { passwordHash: string }>;
@@ -23,14 +24,19 @@ const store: InMemoryStore = {
   conversations: new Map()
 };
 
-// Seed initial data
+// Seed detailed components already present in the product.
 for (const comp of SEED_COMPONENTS) store.components.set(comp.id, comp);
+
+// Add the 500+ reference catalog without overwriting the richer verified records above.
+for (const entry of COMPONENT_CATALOG) {
+  if (!store.components.has(entry.id)) store.components.set(entry.id, catalogEntryToComponent(entry));
+}
+
 for (const course of SEED_COURSES) store.courses.set(course.id, course);
 for (const chal of SEED_CHALLENGES) store.challenges.set(chal.id, chal);
 for (const proj of SEED_PROJECTS) store.projects.set(proj.id, proj);
 for (const ach of SEED_ACHIEVEMENTS) store.achievements.set(ach.id, ach);
 
-// Create default demo user
 const demoPasswordHash = bcrypt.hashSync('maker123', 10);
 const demoUser: User & { passwordHash: string } = {
   id: 'user-demo-1',
@@ -70,12 +76,11 @@ export async function initDatabase() {
       isMongoConnected = false;
     }
   } else {
-    console.log('No MONGODB_URI provided. Initialized high-performance local data store with seeded components.');
+    console.log(`No MONGODB_URI provided. Initialized local data store with ${store.components.size} component records.`);
   }
 }
 
 export const dbService = {
-  // User operations
   async findUserByEmail(email: string) {
     const normalized = email.toLowerCase().trim();
     for (const user of store.users.values()) {
@@ -120,15 +125,11 @@ export const dbService = {
     const user = store.users.get(userId);
     if (!user) return null;
     const updated = { ...user, ...updates };
-    // Auto-calculate level based on XP: Level = floor(XP / 200) + 1
-    if (updated.xp !== undefined) {
-      updated.level = Math.floor(updated.xp / 200) + 1;
-    }
+    if (updated.xp !== undefined) updated.level = Math.floor(updated.xp / 200) + 1;
     store.users.set(userId, updated);
     return updated;
   },
 
-  // Components
   async getComponents(category?: string, difficulty?: string, search?: string) {
     let list = Array.from(store.components.values());
     if (category) list = list.filter(c => c.category === category);
@@ -144,63 +145,28 @@ export const dbService = {
     return store.components.get(id) || null;
   },
 
-  // Courses & Lessons
-  async getCourses() {
-    return Array.from(store.courses.values()).sort((a, b) => a.level - b.level);
-  },
-
-  async getCourseById(id: string) {
-    return store.courses.get(id) || null;
-  },
-
+  async getCourses() { return Array.from(store.courses.values()).sort((a, b) => a.level - b.level); },
+  async getCourseById(id: string) { return store.courses.get(id) || null; },
   async getLessonById(courseId: string, lessonId: string) {
     const course = store.courses.get(courseId);
     if (!course) return null;
     return course.lessons.find(l => l.id === lessonId) || null;
   },
-
-  // Challenges
   async getChallenges(difficulty?: string) {
     let list = Array.from(store.challenges.values());
     if (difficulty) list = list.filter(c => c.difficulty === difficulty);
     return list;
   },
-
-  async getChallengeById(id: string) {
-    return store.challenges.get(id) || null;
-  },
-
-  // Projects
-  async getProjects() {
-    return Array.from(store.projects.values());
-  },
-
-  async getProjectById(id: string) {
-    return store.projects.get(id) || null;
-  },
-
-  // Achievements
-  async getAchievements() {
-    return Array.from(store.achievements.values());
-  },
-
-  // AI Conversations
-  async getConversation(id: string) {
-    return store.conversations.get(id) || null;
-  },
-
+  async getChallengeById(id: string) { return store.challenges.get(id) || null; },
+  async getProjects() { return Array.from(store.projects.values()); },
+  async getProjectById(id: string) { return store.projects.get(id) || null; },
+  async getAchievements() { return Array.from(store.achievements.values()); },
+  async getConversation(id: string) { return store.conversations.get(id) || null; },
   async saveConversation(id: string, userId: string, title: string, messages: AIChatMessage[]) {
-    const conv = {
-      id,
-      userId,
-      title,
-      messages,
-      updatedAt: new Date().toISOString()
-    };
+    const conv = { id, userId, title, messages, updatedAt: new Date().toISOString() };
     store.conversations.set(id, conv);
     return conv;
   },
-
   async getUserConversations(userId: string) {
     return Array.from(store.conversations.values())
       .filter(c => c.userId === userId)
