@@ -37,6 +37,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const activeTheme = resolveTheme(theme);
       setEffectiveTheme(activeTheme);
       root.style.colorScheme = activeTheme;
+      root.dataset.theme = activeTheme;
       root.classList.toggle('dark', activeTheme === 'dark');
       root.classList.toggle('light', activeTheme === 'light');
     };
