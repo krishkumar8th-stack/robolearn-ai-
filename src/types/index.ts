@@ -37,7 +37,10 @@ export type ComponentCategory =
   | 'sensors'
   | 'actuators'
   | 'communication'
-  | 'robotics';
+  | 'robotics'
+  | 'displays'
+  | 'power'
+  | 'passive';
 
 export interface PinDefinition {
   pinNumber: number | string;
@@ -60,7 +63,7 @@ export interface ElectronicComponent {
   tagline: string;
   description: string;
   imageUrl?: string;
-  modelType: 'arduino_uno' | 'esp32' | 'ultrasonic' | 'servo' | 'dc_motor' | 'led' | 'resistor' | 'buzzer' | 'ir_sensor' | 'motor_driver' | 'breadboard' | 'chassis';
+  modelType: 'arduino_uno' | 'esp32' | 'ultrasonic' | 'servo' | 'dc_motor' | 'led' | 'resistor' | 'buzzer' | 'ir_sensor' | 'motor_driver' | 'breadboard' | 'chassis' | 'generic';
   whatIsIt: string;
   whyUsed: string;
   howItWorks: string;
@@ -187,7 +190,6 @@ export interface Achievement {
   unlockedAt?: string;
 }
 
-// Simulation Command Whitelist & Events
 export type SimulationActionType =
   | 'LED_SET'
   | 'LED_BLINK'
@@ -207,9 +209,9 @@ export interface SimulationAction {
   pin?: number | string;
   state?: 'ON' | 'OFF' | boolean;
   angle?: number;
-  speed?: number; // -255 to 255
+  speed?: number;
   direction?: 'FORWARD' | 'BACKWARD' | 'LEFT' | 'RIGHT';
-  duration?: number; // ms
+  duration?: number;
   frequency?: number;
   distance?: number;
   delayMs?: number;
@@ -222,18 +224,8 @@ export interface SimulationState {
   leds: Record<string, { on: boolean; brightness: number }>;
   servos: Record<string, { angle: number }>;
   motors: Record<string, { speed: number; direction: 'FORWARD' | 'BACKWARD' | 'STOP' }>;
-  robot: {
-    x: number;
-    z: number;
-    rotationY: number; // in radians
-    speed: number;
-    status: 'IDLE' | 'MOVING' | 'TURNING' | 'STOPPED_OBSTACLE';
-  };
-  obstacle: {
-    x: number;
-    z: number;
-    distanceToRobot: number;
-  };
+  robot: { x: number; z: number; rotationY: number; speed: number; status: 'IDLE' | 'MOVING' | 'TURNING' | 'STOPPED_OBSTACLE' };
+  obstacle: { x: number; z: number; distanceToRobot: number };
   serialLogs: { timestamp: number; text: string; type: 'info' | 'output' | 'error' }[];
 }
 
@@ -258,10 +250,7 @@ export interface AICodeGenerationResult {
   possibleErrors: string[];
   simulationSupported: boolean;
   simulationActions?: SimulationAction[];
-  challenge?: {
-    title: string;
-    prompt: string;
-  };
+  challenge?: { title: string; prompt: string };
 }
 
 export interface AIDebugResult {
