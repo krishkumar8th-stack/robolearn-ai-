@@ -35,8 +35,8 @@ for (const chal of SEED_CHALLENGES) store.challenges.set(chal.id, chal);
 for (const proj of SEED_PROJECTS) store.projects.set(proj.id, proj);
 for (const ach of SEED_ACHIEVEMENTS) store.achievements.set(ach.id, ach);
 
-// Curated learning set: the 50 hardware references most useful for beginner-to-intermediate
-// drone, autonomous-robot, rover, and embedded-robotics projects.
+// Curated learning set: exactly 50 hardware references focused on drone,
+// autonomous-robot, rover, and embedded-robotics projects.
 const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: ElectronicComponent['category'] }> = [
   { name: 'Arduino Uno R3', category: 'microcontrollers' },
   { name: 'ESP32 DevKit V1', category: 'microcontrollers' },
@@ -55,12 +55,10 @@ const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: Elec
   { name: 'BMP280', category: 'sensors' },
   { name: 'MS5611 Barometric Sensor', category: 'sensors' },
   { name: 'HMC5883L', category: 'sensors' },
-  { name: 'QMC5883L', category: 'sensors' },
   { name: 'AS5600 Magnetic Encoder', category: 'sensors' },
   { name: 'BNO055 Absolute Orientation', category: 'sensors' },
   { name: 'INA219 Current Sensor', category: 'sensors' },
   { name: 'ACS712 20A Current Sensor', category: 'sensors' },
-  { name: 'TCS34725 Color Sensor', category: 'sensors' },
   { name: 'SG90 Micro Servo', alias: 'SG90 Micro Servo Motor', category: 'actuators' },
   { name: 'MG996R High Torque Servo', category: 'actuators' },
   { name: 'Dynamixel XL-320', category: 'actuators' },
@@ -87,7 +85,8 @@ const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: Elec
   { name: 'MCP2515 CAN Module', category: 'communication' },
   { name: 'MAX485 RS485 Module', category: 'communication' },
   { name: 'W5500 Ethernet Module', category: 'communication' },
-  { name: 'TP4056 Li-Ion Charger Module', category: 'power' }
+  { name: 'TP4056 Li-Ion Charger Module', category: 'power' },
+  { name: 'Brushless DC Motor 2812', category: 'actuators' }
 ];
 
 function normalizedName(value: string) {
