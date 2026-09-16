@@ -10,7 +10,7 @@ import { Footer } from './components/layout/Footer';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
-import { Lab3DPage } from './pages/Lab3DPage';
+import { Lab3DWorkbench } from './components/lab/Lab3DWorkbench';
 import { AICodeGeneratorPage } from './pages/AICodeGeneratorPage';
 import { AITutorPage } from './pages/AITutorPage';
 import { ComponentsPage } from './pages/ComponentsPage';
@@ -24,7 +24,6 @@ import { DashboardPage } from './pages/DashboardPage';
 import { AchievementsPage } from './pages/AchievementsPage';
 import { LoginPage, RegisterPage } from './pages/AuthPages';
 
-// Root Route Handler
 const RootRoute: React.FC = () => {
   const { user } = useAuth();
   return user ? <DashboardPage /> : <LandingPage />;
@@ -37,13 +36,13 @@ export default function App() {
         <ThemeProvider>
           <LanguageProvider>
             <SimulationProvider>
-              <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 dark:bg-[#070b14] dark:text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300 transition-colors duration-200">
+              <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 selection:bg-cyan-500/20 selection:text-cyan-700 transition-colors duration-200 dark:bg-[#070b14] dark:text-slate-100 dark:selection:text-cyan-300">
                 <Navbar />
                 <main className="flex-1">
                   <Routes>
                     <Route path="/" element={<RootRoute />} />
                     <Route path="/landing" element={<LandingPage />} />
-                    <Route path="/lab3d" element={<Lab3DPage />} />
+                    <Route path="/lab3d" element={<Lab3DWorkbench />} />
                     <Route path="/ai-code" element={<AICodeGeneratorPage />} />
                     <Route path="/ai-tutor" element={<AITutorPage />} />
                     <Route path="/components" element={<ComponentsPage />} />
