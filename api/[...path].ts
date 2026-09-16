@@ -27,7 +27,17 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'RoboLearn AI Engine' });
 });
 
-// Vercel strips /api before invoking this catch-all function, so mount the router at root.
+// Normalize the path because Vercel may invoke a catch-all function with
+// either the /api prefix preserved or already stripped.
+app.use((req, _res, next) => {
+  if (req.url === '/api') {
+    req.url = '/';
+  } else if (req.url.startsWith('/api/')) {
+    req.url = req.url.slice(4) || '/';
+  }
+  next();
+});
+
 app.use(apiRouter);
 
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
