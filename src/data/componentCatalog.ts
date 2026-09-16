@@ -10,71 +10,116 @@ export interface CatalogEntry {
   difficulty: ElectronicComponent['difficulty'];
 }
 
-const groups: Record<ElectronicComponent['category'], string[]> = {
-  basic_electronics: [
-    '1N4148','1N4001','1N4002','1N4003','1N4004','1N4005','1N4006','1N4007','1N5817','1N5818','1N5819','1N5400','1N5401','1N5402','1N5404','1N5406','1N5408','2N2222','2N3904','2N3906','BC547','BC548','BC557','BC558','TIP120','TIP122','TIP127','2N3055','IRF520','IRF530','IRF540','IRFZ44N','IRLZ44N','AO3400A','LM317','LM7805','LM7809','LM7812','LM7905','LM1117-3.3','LM358','LM324','NE555','CD4017','74HC595','74HC165','74HC14','74HC00','74HC08','74HC32','74HC86','PC817','4N35','LDR GL5528','NTC 10K Thermistor','10K Potentiometer','100K Potentiometer','Rotary Encoder EC11','Reed Switch','Tactile Push Button','Slide Switch','Rocker Switch','Piezo Buzzer 5V','Passive Buzzer','Electret Microphone','Crystal 16MHz','Crystal 8MHz','Relay SPDT 5V','Relay SPDT 12V','Solid State Relay SSR-25DA','Fuse Holder','Terminal Block 2-Pin','JST-XH 2-Pin','Logic Level Converter 4-Channel','Optocoupler Module','Voltage Divider Module','Breadboard 830 Point','Perfboard 5x7cm'
-  ],
-  microcontrollers: [
-    'Arduino Uno R3','Arduino Uno R4 Minima','Arduino Uno R4 WiFi','Arduino Nano','Arduino Nano Every','Arduino Nano 33 IoT','Arduino Nano 33 BLE','Arduino Nano RP2040 Connect','Arduino Mega 2560','Arduino Leonardo','Arduino Micro','Arduino Due','Arduino Zero','Arduino MKR Zero','Arduino MKR WiFi 1010','Arduino MKR WAN 1310','Arduino MKR GSM 1400','Arduino Giga R1 WiFi','Arduino Portenta H7','Arduino Portenta C33','Arduino Pro Mini 5V','Arduino Pro Mini 3.3V','Arduino Pro Micro 5V','Arduino Pro Micro 3.3V','Arduino Esplora','ESP32 DevKit V1','ESP32-WROOM-32','ESP32-WROVER','ESP32-S3-DevKitC-1','ESP32-C3-DevKitM-1','ESP32-C6-DevKitC-1','ESP32-S2-Saola-1','ESP32-CAM AI-Thinker','ESP32 TTGO T-Display','ESP32 TTGO T-Call','ESP8266 NodeMCU','ESP8266 Wemos D1 Mini','Raspberry Pi Pico','Raspberry Pi Pico W','Raspberry Pi Pico 2','Raspberry Pi Pico 2 W','STM32 Blue Pill','STM32 Black Pill F411','STM32 Nucleo-F401RE','STM32 Nucleo-F446RE','STM32 Nucleo-G071RB','STM32 Nucleo-H743ZI2','STM32 Nucleo-L476RG','Teensy 4.0','Teensy 4.1','Teensy 3.2','Seeeduino XIAO','Seeed XIAO RP2040','Seeed XIAO ESP32C3','Seeed XIAO ESP32S3','Seeed XIAO nRF52840','Adafruit Feather M0','Adafruit Feather RP2040','Adafruit Feather ESP32-S3','Adafruit Feather ESP32-S2','Adafruit Feather nRF52840','BBC micro:bit V2','ATtiny85 Digispark','ATmega328P Pro Mini','PIC16F877A Development Board'
-  ],
-  computing_boards: [
-    'Raspberry Pi 5 4GB','Raspberry Pi 5 8GB','Raspberry Pi 5 16GB','Raspberry Pi 4 Model B 2GB','Raspberry Pi 4 Model B 4GB','Raspberry Pi 4 Model B 8GB','Raspberry Pi 3 Model B+','Raspberry Pi Zero 2 W','Raspberry Pi Zero W','Raspberry Pi Zero','Raspberry Pi 400','Raspberry Pi 500','NVIDIA Jetson Nano','NVIDIA Jetson Orin Nano 8GB','NVIDIA Jetson Orin NX','NVIDIA Jetson AGX Orin','NVIDIA Jetson Xavier NX','NVIDIA Jetson Xavier AGX','BeagleBone Black','BeagleBone AI-64','BeagleBone Green','BeagleBone Green Wireless','Orange Pi 5','Orange Pi 5B','Orange Pi Zero 3','Orange Pi 3 LTS','Orange Pi PC Plus','Banana Pi M5','Banana Pi M2 Zero','Rock Pi 4 Model C+','Rock Pi 5B','Radxa Zero 3W','Radxa ROCK 5A','Radxa ROCK 5B','Libre Computer Le Potato','Libre Computer Renegade','ASUS Tinker Board S R2.0','ASUS Tinker Board 2','LattePanda 3 Delta','LattePanda Sigma','Odroid C4','Odroid N2+','Odroid M1','Odroid H3','ODROID-XU4','UP Board','UP Squared','Arduino Portenta X8','Arduino Opta WiFi','Arduino Opta RS485','Arduino Portenta Machine Control','M5Stack Core2','M5Stack CoreS3','M5Stack Atom Lite','M5Stack AtomS3','M5Stack Cardputer','M5Stack StickC Plus2','Wio Terminal','Wio Tracker 1110 Dev Kit','Grove Beginner Kit for Arduino','Grove IoT Starter Kit','Elegoo Mega 2560 R3 Board','Elegoo UNO R3 Board','Keyestudio Mega 2560 Board'
-  ],
-  sensors: [
-    'HC-SR04 Ultrasonic Sensor','HC-SR05 Ultrasonic Sensor','JSN-SR04T Waterproof Ultrasonic','A02YYUW Waterproof Ultrasonic','VL53L0X ToF Sensor','VL53L1X ToF Sensor','VL53L5CX Multizone ToF','VL6180X ToF Sensor','Sharp GP2Y0A21YK0F','Sharp GP2Y0A02YK0F','Sharp GP2Y0A710K0F','TCRT5000 IR Sensor','QRE1113 Reflectance Sensor','KY-033 Line Tracking Sensor','KY-032 Obstacle Avoidance Sensor','HC-SR501 PIR','AM312 PIR Sensor','RCWL-0516 Microwave Radar','LD2410 mmWave Radar','LD2450 mmWave Radar','DHT11','DHT12','DHT21','DHT22','AM2302','SHT30','SHT31','SHT35','BME280','BMP280','BMP388','BMP390','BME680','BME688','BMP180','MPL3115A2','MS5611 Barometric Sensor','LPS22HB','LPS22HH','MPU6050','MPU6500','MPU9250','ICM-20948','BMI160','BMI270','LSM6DS3','LSM6DSOX','LIS3DH','ADXL345','ADXL355','HMC5883L','QMC5883L','MMC5983MA','AK8963','AS5600 Magnetic Encoder','TLE5012B','MLX90614','MLX90632','TMP36','LM35','DS18B20','MAX6675 Thermocouple','MAX31855 Thermocouple','MAX31856 Thermocouple','MAX30102 Pulse Oximeter','MAX9814 Microphone Amplifier','INMP441 I2S Microphone','SPH0645LM4H Microphone','MAX4466 Microphone Amplifier','KY-038 Sound Sensor','SW-420 Vibration Sensor','PZEM-004T V3 Energy Meter','FSR 402 Force Sensor','Load Cell 1kg','Load Cell 5kg','HX711 Load Cell Amplifier','Flex Sensor 2.2in','Capacitive Soil Moisture Sensor','Resistive Soil Moisture Sensor','Raindrop Detection Sensor','Water Level Sensor','Water Flow Sensor YF-S201','Hall Effect A3144','Hall Effect SS49E','Tilt Ball Switch SW-520D','Magnetic Door Sensor','Photoresistor Module','Flame Sensor Module','IR Receiver VS1838B','TSOP38238 IR Receiver','TCS3200 Color Sensor','TCS34725 Color Sensor','AS7341 Spectral Sensor','APDS9960 Gesture Sensor','BH1750 Light Sensor','TSL2561 Light Sensor','TSL2591 Light Sensor','VEML7700 Ambient Light','VEML6075 UV Sensor','GUVA-S12SD UV Sensor','MQ-2 Gas Sensor','MQ-3 Alcohol Sensor','MQ-4 Methane Sensor','MQ-5 Gas Sensor','MQ-6 LPG Sensor','MQ-7 CO Sensor','MQ-8 Hydrogen Sensor','MQ-9 Gas Sensor','MQ-135 Air Quality Sensor','SGP30 Air Quality Sensor','SGP40 VOC Sensor','CCS811 Air Quality Sensor','ENS160 Air Quality Sensor','PMS5003 Particulate Sensor','PMS7003 Particulate Sensor','SDS011 Dust Sensor','GP2Y1010AU0F Dust Sensor','INA219 Current Sensor','INA226 Current Sensor','INA260 Current Sensor','ACS712 5A Current Sensor','ACS712 20A Current Sensor','ACS712 30A Current Sensor','ACS758 Current Sensor','ZMPT101B AC Voltage Sensor','BNO055 Absolute Orientation','BNO085 IMU','BNO086 IMU','MPU6886 IMU','PCA9548A Sensor Multiplexer'
-  ],
-  actuators: [
-    'SG90 Micro Servo','MG90S Metal Gear Servo','MG996R High Torque Servo','MG995 Servo','DS3218 Servo','DS3225 Servo','20KG Digital Servo','Dynamixel AX-12A','Dynamixel XL-320','Dynamixel AX-18A','Dynamixel XM430-W350','NEMA 17 Stepper Motor','NEMA 23 Stepper Motor','NEMA 24 Stepper Motor','28BYJ-48 Stepper Motor','42SHD0217 Stepper Motor','42BYGHW811 Stepper Motor','17HS4401 Stepper Motor','17HS19-2004S1 Stepper Motor','J-5718HB Stepper Motor','DC Gear Motor 6V 100RPM','DC Gear Motor 6V 200RPM','DC Gear Motor 12V 100RPM','DC Gear Motor 12V 200RPM','TT DC Gear Motor','BO Gear Motor','Micro Metal Gearmotor HP 6V','Micro Metal Gearmotor HPCB 6V','Pololu 25D Metal Gearmotor','Pololu 37D Metal Gearmotor','Pololu 37D Gearmotor with Encoder','JGA25-370 DC Gear Motor','JGB37-520 DC Gear Motor','RS-550 DC Motor','RS-775 DC Motor','775 DC Motor','130 DC Motor','370 DC Motor','N20 Micro Gear Motor','GA12-N20 Gear Motor','Planetary Gear Motor 12V','Worm Gear Motor 12V','Brushless DC Motor 2212','Brushless DC Motor 2205','Brushless DC Motor 2306','Brushless DC Motor 2812','Brushless DC Motor 5010','Linear Actuator 12V','Mini Solenoid 5V','Solenoid Lock 12V','Push-Pull Solenoid 12V','Vibration Motor 3V','Coin Vibration Motor','Eccentric Rotating Mass Motor','Relay Module 1-Channel','Relay Module 2-Channel','Relay Module 4-Channel','Relay Module 8-Channel','SSR Module 1-Channel','Electromagnetic Lock 12V','Electric Linear Actuator 100mm','Electric Linear Actuator 200mm','Peristaltic Pump 12V','Mini Water Pump 5V','Mini Air Pump 12V','Diaphragm Pump 12V','Fan 5V 40mm','Fan 12V 40mm','Servo Tester Module','ESC 30A Brushless Motor Controller','ESC 40A Brushless Motor Controller','Hobbywing QuicRun 1060','Dynamixel MX-28T','Dynamixel MX-64T','Dynamixel XH430-V350','Feetech STS3215','Feetech SCS15','LewanSoul LX-16A','Pololu 12V 20D Gearmotor','Pololu 12V 25D Gearmotor','Pololu 12V 37D Gearmotor'
-  ],
-  displays: [
-    '0.96in SSD1306 OLED I2C','1.3in SH1106 OLED','1.5in SSD1351 OLED','2.4in ILI9341 TFT','2.8in ILI9341 TFT','3.2in ILI9341 TFT','3.5in ILI9488 TFT','1.8in ST7735 TFT','2.0in ST7789 TFT','2.4in ST7789 TFT','2.8in ST7789 TFT','1.14in ST7789 TFT','1.54in ST7789 E-Ink','2.13in SSD1680 E-Paper','2.9in SSD1680 E-Paper','4.2in SSD1683 E-Paper','7.5in GDEW075T8 E-Paper','16x2 HD44780 LCD','20x4 HD44780 LCD','128x64 KS0108 LCD','Nokia 5110 LCD','TM1637 4-Digit Display','MAX7219 8x8 LED Matrix','MAX7219 8-Digit Display','HT16K33 LED Matrix','HT16K33 7-Segment','4-Digit 7-Segment Common Anode','4-Digit 7-Segment Common Cathode','8-Digit 7-Segment Display','WS2812B LED Strip','SK6812 RGB LED Strip','APA102 LED Strip','WS2811 LED Controller','NeoPixel Ring 12','NeoPixel Ring 16','NeoPixel Ring 24','NeoPixel Jewel 7','NeoPixel Stick 8','NeoPixel Matrix 8x8','NeoPixel Matrix 16x16','RGB LED 5mm Common Anode','RGB LED 5mm Common Cathode','Bi-color LED 5mm','UV LED 5mm','IR LED 5mm','OLED 128x32 SSD1306','OLED 128x64 SSD1306','OLED 128x64 SH1106','TFT FeatherWing 2.4in','Adafruit RA8875 5in Display','Nextion NX3224T024','Nextion NX8048T070','DWIN 4.3in HMI','DWIN 7in HMI','Newhaven NHD-0420CW','Waveshare 2.13in E-Paper','Waveshare 2.9in E-Paper','Waveshare 4.2in E-Paper','Waveshare 7.5in E-Paper','LCD1602 I2C Module','LCD2004 I2C Module','PCF8574 LCD Backpack','HT16K33 Backpack','P10 RGB LED Matrix Panel','P5 RGB LED Matrix Panel'
-  ],
-  power: [
-    'TP4056 Li-Ion Charger Module','TP4056 USB-C Charger Module','MCP73831 LiPo Charger','MCP73871 PowerPath Charger','BQ24074 Charger','BQ24295 Charger','CN3065 Solar Charger','LTC4054 Charger','MT3608 Boost Converter','XL6009 Boost Converter','XL4015 Buck Converter','LM2596 Buck Converter','MP1584EN Mini Buck Converter','MP2307 Buck Converter','TPS5430 Buck Converter','TPS62160 Buck Converter','TPS63060 Buck-Boost','LTC3780 Buck-Boost Module','L298N Motor Driver Module','L293D Motor Driver Shield','TB6612FNG Motor Driver','DRV8833 Motor Driver','DRV8825 Stepper Driver','A4988 Stepper Driver','TMC2208 Stepper Driver','TMC2209 Stepper Driver','TMC2130 Stepper Driver','TMC5160 Stepper Driver','PCA9685 16-Channel PWM Driver','PCA9685 Servo Driver','BTS7960 Motor Driver','VNH2SP30 Motor Driver','Cytron MDD10A','Cytron MD10C','Cytron MDD20A','Pololu Dual VNH5019','Pololu DRV8835','Pololu DRV8838','Pololu A4988 Stepper Driver','Pololu DRV8825 Stepper Driver','Pololu Tic T500','Sabertooth 2x12','Sabertooth 2x25','Sabertooth 2x32','RoboClaw 2x7A','RoboClaw 2x15A','RoboClaw 2x30A','IBT-2 H-Bridge','DRV8871 Motor Driver','DRV8876 Motor Driver','DRV8251A Motor Driver','DRV8313 Motor Driver','DRV8305 Motor Driver','DRV10983 BLDC Driver','MCP23017 I/O Expander','MCP23008 I/O Expander','PCF8574 I/O Expander','MCP23S17 SPI I/O Expander','74HC595 Shift Register Module','74HC165 Shift Register Module','MAX17048 Fuel Gauge','MAX17043 Fuel Gauge','USB-C PD Trigger Module','5V Power Bank Module','DC-DC 5A Converter Module','DC-DC 10A Converter Module','18650 Battery Holder 1S','18650 Battery Holder 2S','18650 Battery Holder 4S','2S LiPo Battery Pack','3S LiPo Battery Pack'
-  ],
-  communication: [
-    'HC-05 Bluetooth Module','HC-06 Bluetooth Module','HM-10 BLE Module','AT-09 BLE Module','JDY-08 BLE Module','ESP-01 Wi-Fi Module','ESP-01S Wi-Fi Module','ESP8266 ESP-12F','ESP8266 ESP-12E','ESP32-WROOM-32U','SIM800L GSM Module','SIM900A GSM Module','SIM7600 4G Module','A7670C 4G Module','Quectel EC25 LTE Module','Quectel BG96 LTE-M Module','NEO-6M GPS Module','NEO-M8N GPS Module','M8N GPS Module','NEO-M9N GPS Module','BN-880 GPS Module','ATGM336H GPS Module','L76K GPS Module','LoRa SX1278 Ra-02','LoRa SX1276 Module','RFM95W LoRa Module','RFM96W LoRa Module','RFM69HCW RF Module','nRF24L01+','nRF24L01+ PA+LNA','NRF52840 USB Dongle','CC1101 RF Module','HC-12 Wireless Serial Module','433MHz RF Transmitter','433MHz RF Receiver','315MHz RF Transmitter','315MHz RF Receiver','FS1000A RF Transmitter','XY-MK-5V RF Receiver','RC522 RFID Module','PN532 NFC Module','PN7150 NFC Controller','MFRC522 RFID Reader','MCP2515 CAN Module','SN65HVD230 CAN Transceiver','MCP2562 CAN Transceiver','TJA1050 CAN Transceiver','TJA1051 CAN Transceiver','MCP2551 CAN Transceiver','MAX485 RS485 Module','MAX3485 RS485 Module','SP3485 RS485 Module','MAX232 RS232 Module','MAX3232 RS232 Module','USB-TTL CP2102','USB-TTL CH340G','USB-TTL FT232RL','CH9102 USB Serial','ADS1115 16-bit ADC','MCP3008 ADC','MCP3208 ADC','MCP4725 DAC','MCP4728 Quad DAC','TCA9548A I2C Multiplexer','TCA9546A I2C Multiplexer','W5500 Ethernet Module','ENC28J60 Ethernet Module','LAN8720 Ethernet PHY','DP83848 Ethernet PHY','USB Host Shield 2.0','MAX3421E USB Host Controller','MicroSD Card Module SPI','W25Q32 SPI Flash Module','W25Q64 SPI Flash Module','AT24C32 RTC Module','DS3231 RTC Module','DS1307 RTC Module','PCF8563 RTC Module','RV-3028 RTC Module','RV-8803 RTC Module'
-  ],
-  robotics: [
-    'Adafruit Motor Shield V2','Arduino Motor Shield Rev3','Arduino 4 Relays Shield','Arduino Ethernet Shield 2','Arduino WiFi Shield 101','Arduino CAN-BUS Shield','Arduino RS485 Shield','Arduino Proto Shield','Arduino Sensor Shield V5','Arduino CNC Shield V3','RAMPS 1.4 Shield','CNC Shield V4','L298P Motor Driver Shield','L293D Motor Shield','TB6612FNG Motor Driver Carrier','Pololu DRV8835 Dual Motor Driver','Pololu DRV8833 Dual Motor Driver','Pololu Dual MC33926 Motor Driver','Pololu QTR-1A Reflectance Sensor','Pololu QTR-8A Reflectance Array','Pololu QTR-8RC Reflectance Array','Pololu QTRX-HD-13A','Pololu 3pi+ 32U4 Robot','Pololu Zumo 32U4','Pololu Romi Chassis','Pololu Romi 32U4 Control Board','Pololu Balboa 32U4','Pololu Simple Motor Controller G2','Pololu Maestro 6-Channel','Pololu Maestro 12-Channel','Pololu Maestro 18-Channel','Adafruit PCA9685 16-Channel Servo Driver','Adafruit 16-Channel PWM Shield','SparkFun Qwiic Motor Driver','SparkFun Qwiic Step','SparkFun AutoDriver','SparkFun TB6612FNG','SparkFun RedBot Mainboard','SparkFun RedBot Sensor - Line Follower','SparkFun RedBot Sensor - Accelerometer','SparkFun RedBot Sensor - Bumper','SparkFun RedBot Sensor - Encoder','DFRobot 2WD MiniQ Chassis','DFRobot 4WD MiniQ Chassis','DFRobot 2WD Mobile Platform','DFRobot 4WD Mobile Platform','DFRobot MiniQ 2WD','DFRobot Maqueen Plus','DFRobot Romeo BLE','DFRobot Romeo V2','DFRobot Arduino Compatible Romeo','DFRobot Beetle BLE','DFRobot Micro:Maqueen','DFRobot HuskyLens','DFRobot URM37 V5','DFRobot URM09','DFRobot SEN0395','DFRobot SEN0305','DFRobot SEN0204','DFRobot SEN0257','DFRobot SEN0177','DFRobot SEN0501','DFRobot SEN0343','DFRobot SEN0252','DFRobot SEN0193','DFRobot SEN0228','DFRobot SEN0245','Makeblock mBot','Makeblock mCore','Makeblock Auriga','Makeblock Orion','Makeblock Me Ultrasonic Sensor','Makeblock Me Line Follower','Makeblock Me Light Sensor','Makeblock Me Temperature Sensor','Makeblock Me Infrared Receiver','Makeblock Me 7-Segment Display','Makeblock Me Servo Driver','Makeblock Me DC Motor Driver','Makeblock Me Stepper Motor Driver','Makeblock Me Joystick','Makeblock Me RGB LED','Makeblock Me Sound Sensor','Makeblock Me PIR Sensor','Makeblock Me 9g Servo','Makeblock Me Encoder Motor','LEGO SPIKE Prime Hub','LEGO Mindstorms EV3 Brick','LEGO Mindstorms NXT Brick'
-  ],
-  passive: [
-    'Resistor 220Ω','Resistor 330Ω','Resistor 1KΩ','Resistor 4.7KΩ','Resistor 10KΩ','Resistor 47KΩ','Resistor 100KΩ','Resistor 1MΩ','Ceramic Capacitor 10nF','Ceramic Capacitor 100nF','Ceramic Capacitor 1µF','Electrolytic Capacitor 10µF','Electrolytic Capacitor 47µF','Electrolytic Capacitor 100µF','Electrolytic Capacitor 470µF','Film Capacitor 100nF','Film Capacitor 1µF','Inductor 10µH','Inductor 100µH','Inductor 1mH','Ferrite Bead','Trim Potentiometer 10K','Trim Potentiometer 100K','LDR Photoresistor','NTC Thermistor 10K','PTC Thermistor','Varistor MOV 14D471','TVS Diode SMBJ5.0A','Piezo Disc Element','Crystal 12MHz','Crystal 16MHz','Crystal 20MHz'
-  ]
-};
+// Curated 50-component learning library for drones, autonomous robots,
+// rovers and beginner robotics projects.
+const CURATED_COMPONENTS: CatalogEntry[] = [
+  { id: 'curated-arduino-uno-r3', name: 'Arduino Uno R3', category: 'microcontrollers', difficulty: 'Beginner' },
+  { id: 'curated-esp32-devkit-v1', name: 'ESP32 DevKit V1', category: 'microcontrollers', difficulty: 'Beginner' },
+  { id: 'curated-stm32-blue-pill', name: 'STM32 Blue Pill', category: 'microcontrollers', difficulty: 'Intermediate' },
+  { id: 'curated-rpi-pico-w', name: 'Raspberry Pi Pico W', category: 'microcontrollers', difficulty: 'Intermediate' },
+  { id: 'curated-rpi-5-8gb', name: 'Raspberry Pi 5 8GB', category: 'computing_boards', difficulty: 'Intermediate' },
+  { id: 'curated-jetson-orin-nano', name: 'NVIDIA Jetson Orin Nano 8GB', category: 'computing_boards', difficulty: 'Advanced' },
+  { id: 'curated-hc-sr04', name: 'HC-SR04 Ultrasonic Sensor', category: 'sensors', difficulty: 'Beginner' },
+  { id: 'curated-vl53l0x', name: 'VL53L0X ToF Sensor', category: 'sensors', difficulty: 'Beginner' },
+  { id: 'curated-tcrt5000', name: 'TCRT5000 IR Sensor', category: 'sensors', difficulty: 'Beginner' },
+  { id: 'curated-mpu6050', name: 'MPU6050', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-mpu9250', name: 'MPU9250', category: 'sensors', difficulty: 'Advanced' },
+  { id: 'curated-icm20948', name: 'ICM-20948', category: 'sensors', difficulty: 'Advanced' },
+  { id: 'curated-bno085', name: 'BNO085 IMU', category: 'sensors', difficulty: 'Advanced' },
+  { id: 'curated-bme280', name: 'BME280', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-bmp280', name: 'BMP280', category: 'sensors', difficulty: 'Beginner' },
+  { id: 'curated-ms5611', name: 'MS5611 Barometric Sensor', category: 'sensors', difficulty: 'Advanced' },
+  { id: 'curated-hmc5883l', name: 'HMC5883L', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-as5600', name: 'AS5600 Magnetic Encoder', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-bno055', name: 'BNO055 Absolute Orientation', category: 'sensors', difficulty: 'Advanced' },
+  { id: 'curated-ina219', name: 'INA219 Current Sensor', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-acs712-20a', name: 'ACS712 20A Current Sensor', category: 'sensors', difficulty: 'Intermediate' },
+  { id: 'curated-sg90', name: 'SG90 Micro Servo', category: 'actuators', difficulty: 'Beginner' },
+  { id: 'curated-mg996r', name: 'MG996R High Torque Servo', category: 'actuators', difficulty: 'Beginner' },
+  { id: 'curated-dynamixel-xl320', name: 'Dynamixel XL-320', category: 'actuators', difficulty: 'Advanced' },
+  { id: 'curated-nema17', name: 'NEMA 17 Stepper Motor', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-tt-motor', name: 'TT DC Gear Motor', category: 'actuators', difficulty: 'Beginner' },
+  { id: 'curated-bo-motor', name: 'BO Gear Motor', category: 'actuators', difficulty: 'Beginner' },
+  { id: 'curated-n20-motor', name: 'N20 Micro Gear Motor', category: 'actuators', difficulty: 'Beginner' },
+  { id: 'curated-bldc-2212', name: 'Brushless DC Motor 2212', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-bldc-2205', name: 'Brushless DC Motor 2205', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-bldc-2306', name: 'Brushless DC Motor 2306', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-esc-30a', name: 'ESC 30A Brushless Motor Controller', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-bldc-2812', name: 'Brushless DC Motor 2812', category: 'actuators', difficulty: 'Intermediate' },
+  { id: 'curated-l298n', name: 'L298N Motor Driver Module', category: 'power', difficulty: 'Beginner' },
+  { id: 'curated-tb6612', name: 'TB6612FNG Motor Driver', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-bts7960', name: 'BTS7960 Motor Driver', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-vnh2sp30', name: 'VNH2SP30 Motor Driver', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-pca9685', name: 'PCA9685 16-Channel PWM Driver', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-a4988', name: 'A4988 Stepper Driver', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-tmc2209', name: 'TMC2209 Stepper Driver', category: 'power', difficulty: 'Advanced' },
+  { id: 'curated-cytron-mdd10a', name: 'Cytron MDD10A', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-tp4056', name: 'TP4056 Li-Ion Charger Module', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-3s-lipo', name: '3S LiPo Battery Pack', category: 'power', difficulty: 'Intermediate' },
+  { id: 'curated-hc05', name: 'HC-05 Bluetooth Module', category: 'communication', difficulty: 'Beginner' },
+  { id: 'curated-nrf24l01', name: 'nRF24L01+', category: 'communication', difficulty: 'Intermediate' },
+  { id: 'curated-lora-sx1278', name: 'LoRa SX1278 Ra-02', category: 'communication', difficulty: 'Intermediate' },
+  { id: 'curated-neo6m', name: 'NEO-6M GPS Module', category: 'communication', difficulty: 'Intermediate' },
+  { id: 'curated-mcp2515', name: 'MCP2515 CAN Module', category: 'communication', difficulty: 'Advanced' },
+  { id: 'curated-max485', name: 'MAX485 RS485 Module', category: 'communication', difficulty: 'Intermediate' },
+  { id: 'curated-w5500', name: 'W5500 Ethernet Module', category: 'communication', difficulty: 'Intermediate' }
+];
 
-const difficultyFor = (index: number): CatalogEntry['difficulty'] => index < 12 ? 'Beginner' : index < 42 ? 'Intermediate' : 'Advanced';
+export const COMPONENT_CATALOG: CatalogEntry[] = CURATED_COMPONENTS;
 
-export const COMPONENT_CATALOG: CatalogEntry[] = (Object.entries(groups) as [ElectronicComponent['category'], string[]][]).flatMap(([category, names]) =>
-  names.map((name, index) => ({
-    id: `catalog-${category}-${index + 1}`,
-    name,
-    category,
-    difficulty: difficultyFor(index)
-  }))
-);
+function defaultCodeFor(category: ElectronicComponent['category']) {
+  if (category === 'microcontrollers' || category === 'computing_boards') {
+    return `// Beginner robotics control loop\nvoid setup() {\n  Serial.begin(115200);\n}\n\nvoid loop() {\n  // Read a sensor, decide what to do, then control an output.\n  delay(100);\n}`;
+  }
+  if (category === 'sensors') {
+    return `// Sensor learning skeleton\nvoid setup() {\n  Serial.begin(115200);\n}\n\nvoid loop() {\n  int reading = 0; // replace with the real sensor reading\n  Serial.println(reading);\n  delay(100);\n}`;
+  }
+  if (category === 'actuators') {
+    return `// Actuator learning skeleton\nconst int controlPin = 9;\n\nvoid setup() {\n  pinMode(controlPin, OUTPUT);\n}\n\nvoid loop() {\n  analogWrite(controlPin, 80);\n  delay(500);\n  analogWrite(controlPin, 0);\n  delay(500);\n}`;
+  }
+  if (category === 'communication') {
+    return `// Communication learning skeleton\nvoid setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  Serial.println("Hello Robot");\n  delay(1000);\n}`;
+  }
+  return `// Start by identifying power, input/control and output connections.\n// Check the exact datasheet before wiring the real component.`;
+}
 
 export function catalogEntryToComponent(entry: CatalogEntry): ElectronicComponent {
+  const guide = createComponentLearningGuide(entry.name, entry.category);
+  const code = defaultCodeFor(entry.category);
+  const safety = [
+    'Check the exact voltage, current, polarity and pinout before connecting power.',
+    'Use the correct driver, regulator or charger for the component instead of relying on a GPIO pin.',
+    'Disconnect power before changing physical wiring.'
+  ];
+
   return {
     ...entry,
     modelType: 'generic',
-    tagline: `${entry.name} — hardware reference for robotics, electronics and embedded projects.`,
-    description: `${entry.name} is a real electronics, embedded or robotics component/module. Exact variant ratings must be checked against the manufacturer documentation before wiring.`,
-    whatIsIt: `A hardware reference entry for ${entry.name}.`,
-    whyUsed: `Used in embedded systems, electronics, automation or robotics where ${entry.name} is appropriate.`,
-    howItWorks: 'Exact electrical behavior depends on the manufacturer and variant. Consult the relevant datasheet before applying power or signals.',
-    internalWorking: 'Variant-specific internal details are intentionally not guessed in the catalog layer.',
-    learningGuide: createComponentLearningGuide(entry.name, entry.category),
+    tagline: `${entry.name} — a focused robotics learning component.`,
+    description: `${guide.simpleExplanation} This entry is designed as a beginner-friendly reference; exact electrical limits must be verified for the specific part or board variant.`,
+    whatIsIt: guide.simpleExplanation,
+    whyUsed: guide.whereUsed.join(', ') + '.',
+    howItWorks: guide.howItWorksStepByStep.join(' '),
+    internalWorking: guide.inputsOutputs,
+    learningGuide: guide,
     specifications: [
-      { key: 'Reference status', value: 'Catalog entry; verify exact variant' },
+      { key: 'Learning level', value: entry.difficulty },
+      { key: 'Reference status', value: 'Curated robotics learning entry — verify exact variant' },
       { key: 'Category', value: entry.category }
     ],
     pins: [],
-    wiringGuide: { targetBoard: 'Verify from manufacturer datasheet', connections: [] },
-    codeExamples: [],
-    commonMistakes: ['Using a pinout, voltage or current rating from a different variant.'],
-    safetyRules: ['Verify voltage, current, polarity and pinout from the manufacturer documentation before connecting.'],
-    realWorldApplications: ['Embedded systems', 'Robotics', 'Electronics prototyping'],
+    wiringGuide: { targetBoard: 'Use the manufacturer datasheet for exact pinout and power requirements.', connections: [] },
+    codeExamples: [{ language: 'cpp', title: 'Beginner robotics starter', code, explanation: 'A safe learning skeleton. Replace the placeholder input/output with the exact interface described by the component datasheet.' }],
+    codeExampleCpp: code,
+    codeExamplePython: `# Beginner robotics learning skeleton\nprint('Start by reading the component documentation and its inputs/outputs.')`,
+    commonMistakes: [
+      'Assuming every board or module with a similar name has the same pinout.',
+      'Connecting a motor or other high-current load directly to a microcontroller GPIO.',
+      'Skipping the small test step and trying the full robot immediately.'
+    ],
+    safetyRules: safety,
+    safetyGuidelines: safety,
+    realWorldApplications: guide.whereUsed,
     relatedComponentIds: []
   };
 }
