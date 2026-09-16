@@ -11,12 +11,19 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(() => {
-    return (localStorage.getItem('roblearn_lang') as SupportedLanguage) || 'en';
-  });
+const isSupportedLanguage = (value: string | null): value is SupportedLanguage =>
+  !!value && SUPPORTED_LANGUAGES.some((language) => language.code === value);
 
-  const currentMeta = SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
+const getInitialLanguage = (): SupportedLanguage => {
+  if (typeof window === 'undefined') return 'en';
+  const stored = localStorage.getItem('roblearn_lang');
+  return isSupportedLanguage(stored) ? stored : 'en';
+};
+
+export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(getInitialLanguage);
+
+  const currentMeta = SUPPORTED_LANGUAGES.find((language) => language.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
 
   useEffect(() => {
     localStorage.setItem('roblearn_lang', currentLanguage);
@@ -25,12 +32,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [currentLanguage, currentMeta]);
 
   const setLanguage = (lang: SupportedLanguage) => {
+    if (!SUPPORTED_LANGUAGES.some((language) => language.code === lang)) return;
     setCurrentLanguageState(lang);
   };
 
-  const t = (key: string) => {
-    return getTranslation(key, currentLanguage);
-  };
+  const t = (key: string) => getTranslation(key, currentLanguage);
 
   return (
     <LanguageContext.Provider value={{ currentLanguage, currentMeta, setLanguage, t, languages: SUPPORTED_LANGUAGES }}>

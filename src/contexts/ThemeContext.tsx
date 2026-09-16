@@ -11,46 +11,64 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    return (localStorage.getItem('roblearn_theme') as ThemeMode) || 'light';
-  });
+const getSystemTheme = (): 'light' | 'dark' =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light');
+const getInitialTheme = (): ThemeMode => {
+  if (typeof window === 'undefined') return 'light';
+  const stored = localStorage.getItem('roblearn_theme') as ThemeMode | null;
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'light';
+};
+
+const resolveTheme = (mode: ThemeMode): 'light' | 'dark' =>
+  mode === 'system' ? getSystemTheme() : mode;
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setThemeState] = useState<ThemeMode>(getInitialTheme);
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>(() => resolveTheme(getInitialTheme()));
 
   useEffect(() => {
-    localStorage.setItem('roblearn_theme', theme);
+    if (typeof window === 'undefined') return;
+
     const root = document.documentElement;
+    const applyTheme = () => {
+      const activeTheme = resolveTheme(theme);
+      setEffectiveTheme(activeTheme);
+      root.style.colorScheme = activeTheme;
+      root.classList.toggle('dark', activeTheme === 'dark');
+      root.classList.toggle('light', activeTheme === 'light');
+    };
 
-    let activeTheme: 'light' | 'dark' = 'light';
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      activeTheme = prefersDark ? 'dark' : 'light';
-    } else {
-      activeTheme = theme;
-    }
+    localStorage.setItem('roblearn_theme', theme);
+    applyTheme();
 
-    setEffectiveTheme(activeTheme);
-    root.style.colorScheme = activeTheme;
-    if (activeTheme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    }
+    if (theme !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme();
+    mediaQuery.addEventListener?.('change', handleChange);
+
+    return () => mediaQuery.removeEventListener?.('change', handleChange);
   }, [theme]);
 
-  const setTheme = (mode: ThemeMode) => {
-    setThemeState(mode);
-  };
+  const setTheme = (mode: ThemeMode) => setThemeState(mode);
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setThemeState((prev) => (resolveTheme(prev) === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, effectiveTheme, isDark: effectiveTheme === 'dark', setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        effectiveTheme,
+        isDark: effectiveTheme === 'dark',
+        setTheme,
+        toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
