@@ -13,225 +13,122 @@ import {
 } from '../types/index';
 
 const API_BASE = '/api';
+const REQUEST_TIMEOUT_MS = 30_000;
+
+type ApiErrorPayload = { error?: string; message?: string };
 
 function getHeaders(): HeadersInit {
-  const token = localStorage.getItem('roblearn_token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  const token = typeof window !== 'undefined' ? localStorage.getItem('roblearn_token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
+async function request<T>(path: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { ...getHeaders(), ...(init.headers || {}) },
+      signal: controller.signal,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json')
+      ? await response.json().catch(() => null)
+      : await response.text();
+
+    if (!response.ok) {
+      const body = payload as ApiErrorPayload | null;
+      throw new Error(typeof body === 'string' ? body : body?.error || body?.message || `Request failed (${response.status})`);
+    }
+    return payload as T;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw new Error('Request timed out. Please try again.');
+    throw error instanceof Error ? error : new Error('Network request failed');
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+const encodePath = (value: string) => encodeURIComponent(value);
+
 export const api = {
-  // Auth
   async register(data: any): Promise<{ token: string; user: User }> {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Registration failed');
-    }
-    return res.json();
+    return request('/auth/register', { method: 'POST', body: JSON.stringify(data) });
   },
-
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ email, password })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Invalid credentials');
-    }
-    return res.json();
+    return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
   },
-
   async getMe(): Promise<{ user: User }> {
-    const res = await fetch(`${API_BASE}/auth/me`, { headers: getHeaders() });
-    if (!res.ok) throw new Error('Session expired');
-    return res.json();
+    return request('/auth/me');
   },
-
   async updateProfile(data: Partial<User>): Promise<{ user: User }> {
-    const res = await fetch(`${API_BASE}/auth/profile`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('Failed to update profile');
-    return res.json();
+    return request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
   },
 
-  // Components
   async getComponents(category?: string, difficulty?: string, search?: string): Promise<ElectronicComponent[]> {
     const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (difficulty) params.append('difficulty', difficulty);
-    if (search) params.append('search', search);
-    const res = await fetch(`${API_BASE}/components?${params.toString()}`);
-    return res.json();
+    if (category) params.set('category', category);
+    if (difficulty) params.set('difficulty', difficulty);
+    if (search) params.set('search', search);
+    const query = params.toString();
+    return request<ElectronicComponent[]>(`/components${query ? `?${query}` : ''}`);
   },
-
   async getComponentById(id: string): Promise<ElectronicComponent> {
-    const res = await fetch(`${API_BASE}/components/${id}`);
-    if (!res.ok) throw new Error('Component not found');
-    return res.json();
+    return request(`/components/${encodePath(id)}`);
   },
-
   async markComponentLearned(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    const res = await fetch(`${API_BASE}/components/${id}/learn`, {
-      method: 'POST',
-      headers: getHeaders()
-    });
-    return res.json();
+    return request(`/components/${encodePath(id)}/learn`, { method: 'POST' });
   },
 
-  // Courses
-  async getCourses(): Promise<Course[]> {
-    const res = await fetch(`${API_BASE}/courses`);
-    return res.json();
-  },
-
-  async getCourseById(id: string): Promise<Course> {
-    const res = await fetch(`${API_BASE}/courses/${id}`);
-    return res.json();
-  },
-
+  async getCourses(): Promise<Course[]> { return request('/courses'); },
+  async getCourseById(id: string): Promise<Course> { return request(`/courses/${encodePath(id)}`); },
   async getLesson(courseId: string, lessonId: string): Promise<CourseLesson> {
-    const res = await fetch(`${API_BASE}/courses/${courseId}/lessons/${lessonId}`);
-    return res.json();
+    return request(`/courses/${encodePath(courseId)}/lessons/${encodePath(lessonId)}`);
   },
-
   async completeLesson(lessonId: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    const res = await fetch(`${API_BASE}/progress/complete-lesson`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ lessonId })
-    });
-    return res.json();
+    return request('/progress/complete-lesson', { method: 'POST', body: JSON.stringify({ lessonId }) });
   },
 
-  // Challenges
   async getChallenges(difficulty?: string): Promise<CodingChallenge[]> {
-    const res = await fetch(`${API_BASE}/challenges${difficulty ? `?difficulty=${difficulty}` : ''}`);
-    return res.json();
+    const query = difficulty ? `?difficulty=${encodeURIComponent(difficulty)}` : '';
+    return request(`/challenges${query}`);
   },
-
-  async getChallengeById(id: string): Promise<CodingChallenge> {
-    const res = await fetch(`${API_BASE}/challenges/${id}`);
-    return res.json();
-  },
-
+  async getChallengeById(id: string): Promise<CodingChallenge> { return request(`/challenges/${encodePath(id)}`); },
   async submitChallenge(id: string, code: string): Promise<any> {
-    const res = await fetch(`${API_BASE}/challenges/${id}/submit`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ code })
-    });
-    return res.json();
+    return request(`/challenges/${encodePath(id)}/submit`, { method: 'POST', body: JSON.stringify({ code }) });
   },
 
-  // Projects
-  async getProjects(): Promise<RoboticsProject[]> {
-    const res = await fetch(`${API_BASE}/projects`);
-    return res.json();
-  },
-
-  async getProjectById(id: string): Promise<RoboticsProject> {
-    const res = await fetch(`${API_BASE}/projects/${id}`);
-    return res.json();
-  },
-
+  async getProjects(): Promise<RoboticsProject[]> { return request('/projects'); },
+  async getProjectById(id: string): Promise<RoboticsProject> { return request(`/projects/${encodePath(id)}`); },
   async completeProject(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    const res = await fetch(`${API_BASE}/projects/${id}/complete`, {
-      method: 'POST',
-      headers: getHeaders()
-    });
-    return res.json();
+    return request(`/projects/${encodePath(id)}/complete`, { method: 'POST' });
   },
+  async getAchievements(): Promise<Achievement[]> { return request('/achievements'); },
 
-  // Achievements
-  async getAchievements(): Promise<Achievement[]> {
-    const res = await fetch(`${API_BASE}/achievements`);
-    return res.json();
-  },
-
-  // AI Service Calls
-  async aiCheckHealth(): Promise<{ status: string; hasKey: boolean; model: string }> {
-    const res = await fetch(`${API_BASE}/ai/health`);
-    return res.json();
-  },
-
+  async aiCheckHealth(): Promise<{ status: string; hasKey: boolean; model: string }> { return request('/ai/health'); },
   async aiTutor(message: string, history?: AIChatMessage[], context?: any): Promise<{ reply: string }> {
-    const res = await fetch(`${API_BASE}/ai/tutor`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ message, history, context })
-    });
-    if (!res.ok) throw new Error('AI Tutor service unavailable');
-    return res.json();
+    return request('/ai/tutor', { method: 'POST', body: JSON.stringify({ message, history, context }) });
   },
-
   async aiGenerateCode(prompt: string, targetBoard = 'Arduino Uno', language = 'cpp'): Promise<AICodeGenerationResult> {
-    const res = await fetch(`${API_BASE}/ai/generate-code`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ prompt, targetBoard, language })
-    });
-    if (!res.ok) throw new Error('AI Code Generation failed');
-    return res.json();
+    return request('/ai/generate-code', { method: 'POST', body: JSON.stringify({ prompt, targetBoard, language }) });
   },
-
   async aiExplainCode(code: string, language = 'cpp'): Promise<{ summary: string; lineByLine: { line: number; explanation: string }[]; concepts: string[] }> {
-    const res = await fetch(`${API_BASE}/ai/explain-code`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ code, language })
-    });
-    return res.json();
+    return request('/ai/explain-code', { method: 'POST', body: JSON.stringify({ code, language }) });
   },
-
   async aiDebugCode(code: string, language = 'cpp', errorMessage?: string, hardwareContext?: string): Promise<AIDebugResult> {
-    const res = await fetch(`${API_BASE}/ai/debug-code`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ code, language, errorMessage, hardwareContext })
-    });
-    return res.json();
+    return request('/ai/debug-code', { method: 'POST', body: JSON.stringify({ code, language, errorMessage, hardwareContext }) });
   },
-
   async aiExplainComponent(componentId: string, userQuestion?: string): Promise<{ explanation: string }> {
-    const res = await fetch(`${API_BASE}/ai/explain-component`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ componentId, userQuestion })
-    });
-    return res.json();
+    return request('/ai/explain-component', { method: 'POST', body: JSON.stringify({ componentId, userQuestion }) });
   },
-
   async aiHint(challengeTitle: string, problem: string, currentCode: string, hintLevel = 1): Promise<{ hint: string }> {
-    const res = await fetch(`${API_BASE}/ai/hint`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel })
-    });
-    return res.json();
+    return request('/ai/hint', { method: 'POST', body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel }) });
   },
 
-  // Code Simulation interpretation
   async interpretCode(code: string, language = 'cpp'): Promise<{ success: boolean; supported: boolean; message: string; actions: SimulationAction[]; logs: string[] }> {
-    const res = await fetch(`${API_BASE}/simulation/interpret`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ code, language })
-    });
-    return res.json();
+    return request('/simulation/interpret', { method: 'POST', body: JSON.stringify({ code, language }) });
   }
 };
