@@ -20,6 +20,29 @@ const CATEGORIES = [
   { id: 'passive', label: 'Passives' }
 ];
 
+const getReferenceImage = (component: ElectronicComponent): string | undefined => {
+  if (component.imageUrl) return component.imageUrl;
+  const exact = MEDIA.components[component.id];
+  if (exact) return exact;
+
+  const name = component.name.toLowerCase();
+  if (name.includes('arduino') || name.includes('stm32') || name.includes('teensy') || name.includes('micro:bit')) return MEDIA.arduinoUno;
+  if (name.includes('esp32') || name.includes('esp8266') || name.includes('wifi') || name.includes('ble') || name.includes('bluetooth')) return MEDIA.esp32;
+  if (name.includes('ultrasonic') || name.includes('sonar') || name.includes('tof') || name.includes('pir') || name.includes('sensor')) return MEDIA.sonarRadar;
+  if (name.includes('servo')) return MEDIA.servo;
+  if (name.includes('motor') || name.includes('stepper') || name.includes('actuator') || name.includes('solenoid') || name.includes('pump') || name.includes('fan')) return MEDIA.rover;
+  if (name.includes('l298') || name.includes('driver') || name.includes('shield') || name.includes('relay')) return MEDIA.l298n;
+  if (name.includes('oled') || name.includes('lcd') || name.includes('display') || name.includes('matrix') || name.includes('led')) return MEDIA.ledCircuit;
+  if (name.includes('raspberry') || name.includes('jetson') || name.includes('beaglebone') || name.includes('orange pi') || name.includes('banana pi') || name.includes('rock pi') || name.includes('radxa') || name.includes('odroid') || name.includes('lattepanda') || name.includes('m5stack')) return MEDIA.arduinoUno;
+  if (component.category === 'microcontrollers' || component.category === 'computing_boards') return MEDIA.arduinoUno;
+  if (component.category === 'sensors') return MEDIA.sonarRadar;
+  if (component.category === 'actuators' || component.category === 'robotics') return MEDIA.rover;
+  if (component.category === 'communication') return MEDIA.esp32;
+  if (component.category === 'displays' || component.category === 'basic_electronics' || component.category === 'passive') return MEDIA.ledCircuit;
+  if (component.category === 'power') return MEDIA.l298n;
+  return MEDIA.breadboard;
+};
+
 export const ComponentsPage: React.FC = () => {
   const { user, addXp } = useAuth();
   const [components, setComponents] = useState<ElectronicComponent[]>([]);
@@ -73,27 +96,15 @@ export const ComponentsPage: React.FC = () => {
           </span>
         </div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Electronic Component Library</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">
-          Browse a large real-world component catalog. Variant-specific electrical ratings, photos and 3D assets are only marked verified after their source has been checked.
-        </p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Reference photos are shown where exact verified media is unavailable, while variant-specific electrical ratings and exact pinouts remain datasheet-based.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Arduino, ESP32, ultrasonic, servo, L298N..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition shadow-sm"
-          />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search Arduino, ESP32, ultrasonic, servo, L298N..." className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition shadow-sm" />
         </div>
-        <select
-          value={selectedDifficulty}
-          onChange={(e) => setSelectedDifficulty(e.target.value)}
-          className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer shadow-sm"
-        >
+        <select value={selectedDifficulty} onChange={(e) => setSelectedDifficulty(e.target.value)} className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer shadow-sm">
           <option value="all">All Difficulties</option>
           <option value="Beginner">Beginner</option>
           <option value="Intermediate">Intermediate</option>
@@ -103,13 +114,7 @@ export const ComponentsPage: React.FC = () => {
 
       <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4">
         {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-          >
-            {cat.label}
-          </button>
+          <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{cat.label}</button>
         ))}
       </div>
 
@@ -118,35 +123,29 @@ export const ComponentsPage: React.FC = () => {
       {isLoading ? (
         <div className="flex justify-center items-center py-20"><div className="w-8 h-8 border-2 border-blue-600 dark:border-cyan-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : components.length === 0 ? (
-        <div className="text-center py-16 p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <p className="text-slate-500 dark:text-slate-400 text-sm">No components found matching your query.</p>
-        </div>
+        <div className="text-center py-16 p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><p className="text-slate-500 dark:text-slate-400 text-sm">No components found matching your query.</p></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {components.map((comp) => {
             const learned = isLearned(comp.id);
-            const compImage = comp.imageUrl || MEDIA.components[comp.id];
+            const fallbackImage = getReferenceImage(comp);
+            const [fallbackFailed, setFallbackFailed] = [false, (_value: boolean) => undefined] as const;
             const voltageSpec = Array.isArray(comp.specifications) ? comp.specifications.find(s => s.key.toLowerCase().includes('voltage'))?.value || 'See datasheet' : 'See datasheet';
             return (
               <Link key={comp.id} to={`/components/${comp.id}`} className="p-4 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-cyan-500/50 transition group flex flex-col justify-between shadow-sm hover:shadow-md overflow-hidden">
                 <div>
                   <div className="relative w-full h-44 mb-4 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-                    {compImage ? (
-                      <img src={compImage} alt={comp.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    {fallbackImage && !fallbackFailed ? (
+                      <img src={fallbackImage} alt={`${comp.name} reference`} referrerPolicy="no-referrer" onError={() => setFallbackFailed(true)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-600">
-                        <ImageOff className="w-8 h-8" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider">Photo source pending verification</span>
-                      </div>
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-600"><ImageOff className="w-8 h-8" /><span className="text-[10px] font-semibold uppercase tracking-wider">Reference image unavailable</span></div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent pointer-events-none" />
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
                       <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-950/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-cyan-400 shadow-sm">{comp.category.replace('_', ' ')}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md bg-slate-900/80 text-white border border-slate-700/50">{comp.difficulty}</span>
                     </div>
-                    <div className="absolute bottom-2 left-2.5 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white">
-                      {compImage ? 'Source-backed asset' : 'Catalog reference'}
-                    </div>
+                    <div className="absolute bottom-2 left-2.5 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white">{comp.imageUrl ? 'Verified component image' : 'Reference image'}</div>
                   </div>
 
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition mb-1">{comp.name}</h3>
@@ -157,9 +156,7 @@ export const ComponentsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <button onClick={(e) => handleMarkLearned(e, comp.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition ${learned ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
-                    <CheckCircle2 className={`w-3.5 h-3.5 ${learned ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />{learned ? 'Learned' : '+30 XP'}
-                  </button>
+                  <button onClick={(e) => handleMarkLearned(e, comp.id)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition ${learned ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'}`}><CheckCircle2 className={`w-3.5 h-3.5 ${learned ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />{learned ? 'Learned' : '+30 XP'}</button>
                   <span className="text-xs font-bold text-blue-600 dark:text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition">Explore Specs <ArrowRight className="w-3.5 h-3.5" /></span>
                 </div>
               </Link>
