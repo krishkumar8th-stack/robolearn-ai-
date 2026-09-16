@@ -35,6 +35,86 @@ for (const chal of SEED_CHALLENGES) store.challenges.set(chal.id, chal);
 for (const proj of SEED_PROJECTS) store.projects.set(proj.id, proj);
 for (const ach of SEED_ACHIEVEMENTS) store.achievements.set(ach.id, ach);
 
+// Curated learning set: the 50 hardware references most useful for beginner-to-intermediate
+// drone, autonomous-robot, rover, and embedded-robotics projects.
+const FEATURED_COMPONENTS: Array<{ name: string; alias?: string; category?: ElectronicComponent['category'] }> = [
+  { name: 'Arduino Uno R3', category: 'microcontrollers' },
+  { name: 'ESP32 DevKit V1', category: 'microcontrollers' },
+  { name: 'STM32 Blue Pill', category: 'microcontrollers' },
+  { name: 'Raspberry Pi Pico W', category: 'microcontrollers' },
+  { name: 'Raspberry Pi 5 8GB', category: 'computing_boards' },
+  { name: 'NVIDIA Jetson Orin Nano 8GB', category: 'computing_boards' },
+  { name: 'HC-SR04 Ultrasonic Sensor', alias: 'HC-SR04 Ultrasonic Distance Sensor', category: 'sensors' },
+  { name: 'VL53L0X ToF Sensor', category: 'sensors' },
+  { name: 'TCRT5000 IR Sensor', category: 'sensors' },
+  { name: 'MPU6050', category: 'sensors' },
+  { name: 'MPU9250', category: 'sensors' },
+  { name: 'ICM-20948', category: 'sensors' },
+  { name: 'BNO085 IMU', category: 'sensors' },
+  { name: 'BME280', category: 'sensors' },
+  { name: 'BMP280', category: 'sensors' },
+  { name: 'MS5611 Barometric Sensor', category: 'sensors' },
+  { name: 'HMC5883L', category: 'sensors' },
+  { name: 'QMC5883L', category: 'sensors' },
+  { name: 'AS5600 Magnetic Encoder', category: 'sensors' },
+  { name: 'BNO055 Absolute Orientation', category: 'sensors' },
+  { name: 'INA219 Current Sensor', category: 'sensors' },
+  { name: 'ACS712 20A Current Sensor', category: 'sensors' },
+  { name: 'TCS34725 Color Sensor', category: 'sensors' },
+  { name: 'SG90 Micro Servo', alias: 'SG90 Micro Servo Motor', category: 'actuators' },
+  { name: 'MG996R High Torque Servo', category: 'actuators' },
+  { name: 'Dynamixel XL-320', category: 'actuators' },
+  { name: 'NEMA 17 Stepper Motor', category: 'actuators' },
+  { name: 'TT DC Gear Motor', category: 'actuators' },
+  { name: 'BO Gear Motor', category: 'actuators' },
+  { name: 'N20 Micro Gear Motor', category: 'actuators' },
+  { name: 'Brushless DC Motor 2212', category: 'actuators' },
+  { name: 'Brushless DC Motor 2205', category: 'actuators' },
+  { name: 'Brushless DC Motor 2306', category: 'actuators' },
+  { name: 'ESC 30A Brushless Motor Controller', category: 'actuators' },
+  { name: 'L298N Motor Driver Module', category: 'power' },
+  { name: 'TB6612FNG Motor Driver', category: 'power' },
+  { name: 'BTS7960 Motor Driver', category: 'power' },
+  { name: 'VNH2SP30 Motor Driver', category: 'power' },
+  { name: 'PCA9685 16-Channel PWM Driver', category: 'power' },
+  { name: 'A4988 Stepper Driver', category: 'power' },
+  { name: 'TMC2209 Stepper Driver', category: 'power' },
+  { name: 'Cytron MDD10A', category: 'power' },
+  { name: 'HC-05 Bluetooth Module', category: 'communication' },
+  { name: 'nRF24L01+', category: 'communication' },
+  { name: 'LoRa SX1278 Ra-02', category: 'communication' },
+  { name: 'NEO-6M GPS Module', category: 'communication' },
+  { name: 'MCP2515 CAN Module', category: 'communication' },
+  { name: 'MAX485 RS485 Module', category: 'communication' },
+  { name: 'W5500 Ethernet Module', category: 'communication' },
+  { name: 'TP4056 Li-Ion Charger Module', category: 'power' }
+];
+
+function normalizedName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function buildFeaturedComponents(): ElectronicComponent[] {
+  const byName = new Map<string, ElectronicComponent[]>();
+  for (const component of store.components.values()) {
+    const key = normalizedName(component.name);
+    const existing = byName.get(key) || [];
+    existing.push(component);
+    byName.set(key, existing);
+  }
+
+  return FEATURED_COMPONENTS.map((featured) => {
+    const candidates = [featured.alias, featured.name].filter(Boolean) as string[];
+    for (const candidate of candidates) {
+      const found = byName.get(normalizedName(candidate))?.[0];
+      if (found && (!featured.category || found.category === featured.category)) return found;
+    }
+    return null;
+  }).filter((component): component is ElectronicComponent => Boolean(component));
+}
+
+const featuredComponents = buildFeaturedComponents();
+
 const demoPasswordHash = bcrypt.hashSync('maker123', 10);
 const demoUser: StoredUser = {
   id: 'user-demo-1',
@@ -82,7 +162,7 @@ export async function initDatabase() {
       console.warn('MongoDB connection failed; using in-memory fallback:', err.message);
     }
   } else {
-    console.log(`No MONGODB_URI provided. Initialized local data store with ${store.components.size} component records.`);
+    console.log(`No MONGODB_URI provided. Initialized local data store with ${featuredComponents.length} curated component records.`);
   }
 }
 
@@ -161,7 +241,7 @@ export const dbService = {
   },
 
   async getComponents(category?: string, difficulty?: string, search?: string) {
-    let list = Array.from(store.components.values());
+    let list = featuredComponents;
     if (category) list = list.filter(c => c.category === category);
     if (difficulty) list = list.filter(c => c.difficulty === difficulty);
     if (search) {
