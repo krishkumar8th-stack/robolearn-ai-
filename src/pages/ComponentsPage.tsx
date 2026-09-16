@@ -7,17 +7,13 @@ import { ElectronicComponent } from '../types/index';
 import { WebComponentImage } from '../components/WebComponentImage';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Components' },
-  { id: 'microcontrollers', label: 'Microcontrollers' },
-  { id: 'computing_boards', label: 'Computing Boards' },
+  { id: 'all', label: 'All 50' },
+  { id: 'microcontrollers', label: 'Controllers' },
+  { id: 'computing_boards', label: 'Compute / AI' },
   { id: 'sensors', label: 'Sensors' },
-  { id: 'actuators', label: 'Actuators & Motors' },
-  { id: 'displays', label: 'Displays' },
-  { id: 'communication', label: 'Communication' },
-  { id: 'robotics', label: 'Drivers & Robotics' },
-  { id: 'basic_electronics', label: 'Basic Electronics' },
-  { id: 'power', label: 'Power' },
-  { id: 'passive', label: 'Passives' }
+  { id: 'actuators', label: 'Motors / Servos' },
+  { id: 'communication', label: 'Telemetry / GPS' },
+  { id: 'power', label: 'Drivers / Power' }
 ];
 
 export const ComponentsPage: React.FC = () => {
@@ -67,21 +63,21 @@ export const ComponentsPage: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#070b14] text-slate-900 dark:text-slate-100 p-4 sm:p-6 max-w-7xl mx-auto w-full transition-colors duration-200">
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-wider mb-2">
-          <Cpu className="w-4 h-4" /> Hardware Reference Library
-          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> 500+ catalog entries</span>
+          <Cpu className="w-4 h-4" /> Robotics Hardware Library
+          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> 50 core components</span>
         </div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Electronic Component Library</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Exact verified photos are shown when available; otherwise RoboLearn automatically looks up an openly licensed web reference image as you scroll.</p>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Drone & Robotics Component Library</h1>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">A focused set of 50 core parts for autonomous robots, rovers, drones, embedded controllers and AI robotics. Photos use verified local assets when available and web reference images otherwise.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
-        <div className="relative flex-1 w-full"><Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search Arduino, ESP32, ultrasonic, servo, L298N..." className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition shadow-sm" /></div>
+        <div className="relative flex-1 w-full"><Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search ESP32, GPS, IMU, motor, ESC, servo..." className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition shadow-sm" /></div>
         <select value={selectedDifficulty} onChange={(e) => setSelectedDifficulty(e.target.value)} className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer shadow-sm"><option value="all">All Difficulties</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select>
       </div>
 
       <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4">{CATEGORIES.map((cat) => <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{cat.label}</button>)}</div>
 
-      {!isLoading && <div className="text-xs text-slate-500 dark:text-slate-400 mb-5">Showing {components.length} matching components</div>}
+      {!isLoading && <div className="text-xs text-slate-500 dark:text-slate-400 mb-5">Showing {components.length} of 50 core components</div>}
 
       {isLoading ? (
         <div className="flex justify-center items-center py-20"><div className="w-8 h-8 border-2 border-blue-600 dark:border-cyan-500 border-t-transparent rounded-full animate-spin" /></div>
