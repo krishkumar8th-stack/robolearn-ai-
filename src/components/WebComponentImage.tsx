@@ -1,0 +1,183 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { ImageOff, Loader2, ExternalLink } from 'lucide-react';
+import { MEDIA } from '../assets/media';
+
+type ImageState = {
+  url: string | null;
+  sourceUrl?: string;
+  source: 'verified' | 'openverse' | 'wikimedia' | 'fallback' | 'none';
+};
+
+const memoryCache = new Map<string, ImageState>();
+
+const clean = (value: string) => value
+  .toLowerCase()
+  .replace(/\b(v\d+|r\d+|rev\.?\s*\d+)\b/gi, ' ')
+  .replace(/[^a-z0-9+#. -]/gi, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const significantTokens = (value: string) => clean(value)
+  .split(' ')
+  .filter((token) => token.length >= 3 && !['the', 'for', 'and', 'with', 'module', 'board'].includes(token));
+
+function scoreTitle(name: string, title: string) {
+  const query = clean(name);
+  const candidate = clean(title);
+  if (!query || !candidate) return 0;
+  if (candidate === query) return 100;
+  let score = 0;
+  if (candidate.includes(query)) score += 60;
+  const tokens = significantTokens(name);
+  const matches = tokens.filter((token) => candidate.includes(token)).length;
+  score += tokens.length ? (matches / tokens.length) * 40 : 0;
+  return score;
+}
+
+async function searchOpenverse(name: string): Promise<ImageState | null> {
+  const queries = [`"${name}"`, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  for (const q of queries) {
+    try {
+      const params = new URLSearchParams({ q, page_size: '8', mature: 'false' });
+      const response = await fetch(`https://api.openverse.org/v1/images/?${params.toString()}`);
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const results = Array.isArray(payload?.results) ? payload.results : [];
+      const best = results
+        .filter((item: any) => typeof item?.thumbnail === 'string' || typeof item?.url === 'string')
+        .map((item: any) => ({ item, score: scoreTitle(name, String(item?.title || '')) }))
+        .sort((a: any, b: any) => b.score - a.score)[0];
+      if (best && best.score >= 28) {
+        const url = best.item.thumbnail || best.item.url;
+        if (typeof url === 'string' && url.startsWith('http')) {
+          return {
+            url,
+            sourceUrl: best.item.foreign_landing_url || best.item.detail_url || url,
+            source: 'openverse'
+          };
+        }
+      }
+    } catch {
+      // Continue to the next source.
+    }
+  }
+  return null;
+}
+
+async function searchWikimedia(name: string): Promise<ImageState | null> {
+  const queries = [`intitle:"${name}"`, name, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  for (const query of queries) {
+    try {
+      const params = new URLSearchParams({
+        action: 'query', format: 'json', origin: '*', generator: 'search', gsrnamespace: '6',
+        gsrsearch: query, gsrlimit: '8', prop: 'imageinfo', iiprop: 'url|canonicaltitle', iiurlwidth: '800'
+      });
+      const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`);
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const pages = Object.values(payload?.query?.pages || {}) as Array<any>;
+      const best = pages
+        .map((page) => ({ page, score: scoreTitle(name, String(page?.title || '')) }))
+        .filter(({ page }) => String(page?.imageinfo?.[0]?.mime || '').startsWith('image/'))
+        .sort((a, b) => b.score - a.score)[0];
+      const image = best?.page?.imageinfo?.[0];
+      const url = image?.thumburl || image?.url;
+      if (typeof url === 'string' && url.startsWith('http')) {
+        return {
+          url,
+          sourceUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(String(best.page.title || '').replace(/ /g, '_'))}`,
+          source: 'wikimedia'
+        };
+      }
+    } catch {
+      // Ignore transient source failures.
+    }
+  }
+  return null;
+}
+
+const cacheKey = (id: string, name: string) => `robolearn:web-image:${id}:${name}`;
+
+export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, name }) => {
+  const localImage = MEDIA.components[id];
+  const cached = memoryCache.get(id);
+  const [state, setState] = useState<ImageState>(localImage ? { url: localImage, source: 'verified' } : cached || { url: null, source: 'none' });
+  const [started, setStarted] = useState(Boolean(localImage || cached?.url));
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (localImage || started || !ref.current) return;
+    const element = ref.current;
+    if (!('IntersectionObserver' in window)) { setStarted(true); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect();
+        setStarted(true);
+      }
+    }, { rootMargin: '500px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [localImage, started]);
+
+  useEffect(() => {
+    if (!started || localImage || state.url) return;
+    const key = cacheKey(id, name);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as ImageState;
+        if (parsed?.url) {
+          memoryCache.set(id, parsed);
+          setState(parsed);
+          return;
+        }
+      } catch {
+        localStorage.removeItem(key);
+      }
+    }
+
+    let cancelled = false;
+    (async () => {
+      const result = await searchOpenverse(name) || await searchWikimedia(name);
+      if (cancelled) return;
+      if (result) {
+        memoryCache.set(id, result);
+        localStorage.setItem(key, JSON.stringify(result));
+        setState(result);
+      } else {
+        setState({ url: MEDIA.breadboard, source: 'fallback' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [started, localImage, state.url, id, name]);
+
+  const sourceLabel = state.source === 'verified' ? 'Verified asset' : state.source === 'openverse' ? 'Web photo · Openverse' : state.source === 'wikimedia' ? 'Web photo · Wikimedia' : state.source === 'fallback' ? 'Reference photo' : '';
+
+  return (
+    <div ref={ref} className="relative w-full h-full">
+      {state.url ? (
+        <img
+          src={state.url}
+          alt={`${name} web reference photo`}
+          referrerPolicy="no-referrer"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+          onError={() => {
+            if (state.source === 'openverse' || state.source === 'wikimedia') {
+              localStorage.removeItem(cacheKey(id, name));
+              setState({ url: MEDIA.breadboard, source: 'fallback' });
+            }
+          }}
+        />
+      ) : !started ? (
+        <div className="w-full h-full flex items-center justify-center text-slate-400 dark:text-slate-600"><Loader2 className="w-6 h-6 animate-spin" /></div>
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-slate-400 dark:text-slate-600"><ImageOff className="w-8 h-8" /></div>
+      )}
+      {state.url && <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
+        <span className="px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white">{sourceLabel}</span>
+        {state.sourceUrl && state.source !== 'verified' && <a href={state.sourceUrl} target="_blank" rel="noreferrer" aria-label={`Open image source for ${name}`} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white hover:text-cyan-300 transition" onClick={(e) => e.stopPropagation()}>Source <ExternalLink className="w-3 h-3" /></a>}
+      </div>}
+    </div>
+  );
+};
