@@ -22,7 +22,8 @@ const ChallengesPage = lazy(() => import('./pages/ChallengesPage').then(m => ({ 
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage').then(m => ({ default: m.AchievementsPage })));
-const AuthPages = lazy(() => import('./pages/AuthPages'));
+const LoginPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.RegisterPage })));
 
 const RouteLoader = () => (
   <div className="flex min-h-[55vh] items-center justify-center" role="status" aria-label="Loading page">
@@ -62,8 +63,8 @@ export default function App() {
                         <Route path="/projects" element={<ProjectsPage />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/achievements" element={<AchievementsPage />} />
-                        <Route path="/login" element={<AuthPages.LoginPage />} />
-                        <Route path="/register" element={<AuthPages.RegisterPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
