@@ -60,9 +60,19 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [cameraViewMode, setCameraViewMode] = useState<'default' | 'top' | 'rover' | 'circuit'>('default');
 
   const animationFrameRef = useRef<number | null>(null);
-  const activeActionIndex = useRef<number>(0);
-  const actionsList = useRef<SimulationAction[]>([]);
-  const actionStartTime = useRef<number>(0);
+  const actionTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const runIdRef = useRef(0);
+  const lastUiUpdateRef = useRef(0);
+
+  const clearSimulationWork = () => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    actionTimersRef.current.forEach(clearTimeout);
+    actionTimersRef.current = [];
+    runIdRef.current += 1;
+  };
 
   const appendLog = (text: string, type: 'info' | 'output' | 'error' = 'output') => {
     setState(prev => ({
@@ -72,7 +82,7 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const stopSimulation = () => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    clearSimulationWork();
     setState(prev => ({
       ...prev,
       isRunning: false,
@@ -91,7 +101,8 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const resetSimulation = () => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    clearSimulationWork();
+    lastUiUpdateRef.current = 0;
     setState({
       ...defaultSimulationState,
       serialLogs: [
@@ -102,7 +113,6 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setObstacleDistance = (dist: number) => {
     setState(prev => {
-      // Robot is at z=prev.robot.z, obstacle at z = prev.robot.z - (dist / 10)
       const obstacleZ = prev.robot.z - (dist * 0.1);
       return {
         ...prev,
@@ -120,15 +130,10 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const runActions = (actions: SimulationAction[], userLogs?: string[]) => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    clearSimulationWork();
+    const runId = runIdRef.current;
 
-    if (userLogs) {
-      userLogs.forEach(l => appendLog(l, 'info'));
-    }
-
-    actionsList.current = actions;
-    activeActionIndex.current = 0;
-    actionStartTime.current = Date.now();
+    if (userLogs) userLogs.forEach(l => appendLog(l, 'info'));
 
     setState(prev => ({
       ...prev,
@@ -139,6 +144,7 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     appendLog(`[SIMULATOR] Executing ${actions.length} validated hardware action(s)...`, 'info');
 
     const executeAction = (index: number) => {
+      if (runId !== runIdRef.current) return;
       if (index >= actions.length) {
         appendLog('[SIMULATOR] Routine completed successfully.', 'info');
         setState(prev => ({ ...prev, isRunning: false }));
@@ -146,9 +152,11 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       const act = actions[index];
-      const duration = (act.duration || 800) / state.speedMultiplier;
+      const executeSpeed = Math.max(0.25, state.speedMultiplier);
+      const duration = (act.duration || 800) / executeSpeed;
 
       setState(prev => {
+        if (runId !== runIdRef.current) return prev;
         const next = { ...prev };
         switch (act.type) {
           case 'LED_SET': {
@@ -170,17 +178,12 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
           }
           case 'SERVO_SET': {
-            const angle = act.angle ?? 90;
-            next.servos = { ...next.servos, servo_01: { angle } };
+            next.servos = { ...next.servos, servo_01: { angle: act.angle ?? 90 } };
             break;
           }
           case 'ROBOT_MOVE': {
             const isFwd = act.direction === 'FORWARD';
-            next.robot = {
-              ...next.robot,
-              speed: isFwd ? 1 : -1,
-              status: 'MOVING'
-            };
+            next.robot = { ...next.robot, speed: isFwd ? 1 : -1, status: 'MOVING' };
             next.motors = {
               motor_left: { speed: 200, direction: isFwd ? 'FORWARD' : 'BACKWARD' },
               motor_right: { speed: 200, direction: isFwd ? 'FORWARD' : 'BACKWARD' }
@@ -209,34 +212,27 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
           }
           case 'OBSTACLE_DETECT': {
-            next.obstacle = {
-              ...next.obstacle,
-              distanceToRobot: act.distance || 18
-            };
+            next.obstacle = { ...next.obstacle, distanceToRobot: act.distance || 18 };
             next.robot = { ...next.robot, status: 'STOPPED_OBSTACLE' };
             break;
           }
           case 'ULTRASONIC_PING': {
-            next.obstacle = {
-              ...next.obstacle,
-              distanceToRobot: act.distance || 20
-            };
+            next.obstacle = { ...next.obstacle, distanceToRobot: act.distance || 20 };
             break;
           }
         }
         return next;
       });
 
-      // Schedule next action
-      setTimeout(() => {
-        executeAction(index + 1);
-      }, duration);
+      const timer = setTimeout(() => executeAction(index + 1), duration);
+      actionTimersRef.current.push(timer);
     };
 
     executeAction(0);
   };
 
-  // Robot continuous motion integration in 3D space
+  // Keep continuous physics in refs/frame-time, but publish to React at a capped UI rate.
+  // The Three.js scene can remain smooth while React consumers avoid 60 state updates/sec.
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -245,34 +241,26 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const delta = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
-      setState(prev => {
-        if (!prev.isRunning || prev.robot.status !== 'MOVING') return prev;
+      if (time - lastUiUpdateRef.current >= 66) {
+        lastUiUpdateRef.current = time;
+        setState(prev => {
+          if (!prev.isRunning || prev.robot.status !== 'MOVING') return prev;
 
-        const speedVal = prev.robot.speed * 0.8 * prev.speedMultiplier;
-        const heading = prev.robot.rotationY;
+          const speedVal = prev.robot.speed * 0.8 * prev.speedMultiplier;
+          const heading = prev.robot.rotationY;
+          const newX = prev.robot.x - Math.sin(heading) * speedVal * delta;
+          const newZ = prev.robot.z - Math.cos(heading) * speedVal * delta;
+          const dx = prev.obstacle.x - newX;
+          const dz = prev.obstacle.z - newZ;
+          const distCm = Math.max(2, Math.round(Math.sqrt(dx * dx + dz * dz) * 10));
 
-        // Move along heading
-        const newX = prev.robot.x - Math.sin(heading) * speedVal * delta;
-        const newZ = prev.robot.z - Math.cos(heading) * speedVal * delta;
-
-        // Calculate dynamic distance to obstacle
-        const dx = prev.obstacle.x - newX;
-        const dz = prev.obstacle.z - newZ;
-        const distCm = Math.max(2, Math.round(Math.sqrt(dx * dx + dz * dz) * 10));
-
-        return {
-          ...prev,
-          robot: {
-            ...prev.robot,
-            x: newX,
-            z: newZ
-          },
-          obstacle: {
-            ...prev.obstacle,
-            distanceToRobot: distCm
-          }
-        };
-      });
+          return {
+            ...prev,
+            robot: { ...prev.robot, x: newX, z: newZ },
+            obstacle: { ...prev.obstacle, distanceToRobot: distCm }
+          };
+        });
+      }
 
       animId = requestAnimationFrame(loop);
     };
@@ -280,6 +268,8 @@ export const SimulationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
   }, []);
+
+  useEffect(() => () => clearSimulationWork(), []);
 
   return (
     <SimulationContext.Provider
