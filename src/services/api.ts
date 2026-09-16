@@ -13,7 +13,8 @@ import {
 } from '../types/index';
 
 const API_BASE = '/api';
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 45_000;
+const AI_REQUEST_TIMEOUT_MS = 90_000;
 
 type ApiErrorPayload = { error?: string; message?: string };
 
@@ -108,24 +109,24 @@ export const api = {
   },
   async getAchievements(): Promise<Achievement[]> { return request('/achievements'); },
 
-  async aiCheckHealth(): Promise<{ status: string; hasKey: boolean; model: string }> { return request('/ai/health'); },
+  async aiCheckHealth(): Promise<{ status: string; hasKey: boolean; model: string; searchGrounding?: boolean }> { return request('/ai/health'); },
   async aiTutor(message: string, history?: AIChatMessage[], context?: any): Promise<{ reply: string }> {
-    return request('/ai/tutor', { method: 'POST', body: JSON.stringify({ message, history, context }) });
+    return request('/ai/tutor', { method: 'POST', body: JSON.stringify({ message, history, context }) }, AI_REQUEST_TIMEOUT_MS);
   },
   async aiGenerateCode(prompt: string, targetBoard = 'Arduino Uno', language = 'cpp'): Promise<AICodeGenerationResult> {
-    return request('/ai/generate-code', { method: 'POST', body: JSON.stringify({ prompt, targetBoard, language }) });
+    return request('/ai/generate-code', { method: 'POST', body: JSON.stringify({ prompt, targetBoard, language }) }, AI_REQUEST_TIMEOUT_MS);
   },
   async aiExplainCode(code: string, language = 'cpp'): Promise<{ summary: string; lineByLine: { line: number; explanation: string }[]; concepts: string[] }> {
-    return request('/ai/explain-code', { method: 'POST', body: JSON.stringify({ code, language }) });
+    return request('/ai/explain-code', { method: 'POST', body: JSON.stringify({ code, language }) }, AI_REQUEST_TIMEOUT_MS);
   },
   async aiDebugCode(code: string, language = 'cpp', errorMessage?: string, hardwareContext?: string): Promise<AIDebugResult> {
-    return request('/ai/debug-code', { method: 'POST', body: JSON.stringify({ code, language, errorMessage, hardwareContext }) });
+    return request('/ai/debug-code', { method: 'POST', body: JSON.stringify({ code, language, errorMessage, hardwareContext }) }, AI_REQUEST_TIMEOUT_MS);
   },
   async aiExplainComponent(componentId: string, userQuestion?: string): Promise<{ explanation: string }> {
-    return request('/ai/explain-component', { method: 'POST', body: JSON.stringify({ componentId, userQuestion }) });
+    return request('/ai/explain-component', { method: 'POST', body: JSON.stringify({ componentId, userQuestion }) }, AI_REQUEST_TIMEOUT_MS);
   },
   async aiHint(challengeTitle: string, problem: string, currentCode: string, hintLevel = 1): Promise<{ hint: string }> {
-    return request('/ai/hint', { method: 'POST', body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel }) });
+    return request('/ai/hint', { method: 'POST', body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel }) }, AI_REQUEST_TIMEOUT_MS);
   },
 
   async interpretCode(code: string, language = 'cpp'): Promise<{ success: boolean; supported: boolean; message: string; actions: SimulationAction[]; logs: string[] }> {
