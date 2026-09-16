@@ -4,7 +4,7 @@ import { Cpu, Search, CheckCircle2, ArrowRight, Database } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ElectronicComponent } from '../types/index';
-import { ComponentImage } from '../components/ComponentImage';
+import { WebComponentImage } from '../components/WebComponentImage';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Components' },
@@ -71,7 +71,7 @@ export const ComponentsPage: React.FC = () => {
           <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> 500+ catalog entries</span>
         </div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Electronic Component Library</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Exact verified photos are shown when available; otherwise RoboLearn automatically looks up a relevant Wikimedia Commons reference image as you scroll.</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Exact verified photos are shown when available; otherwise RoboLearn automatically looks up an openly licensed web reference image as you scroll.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
@@ -96,7 +96,7 @@ export const ComponentsPage: React.FC = () => {
               <Link key={comp.id} to={`/components/${comp.id}`} className="p-4 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-cyan-500/50 transition group flex flex-col justify-between shadow-sm hover:shadow-md overflow-hidden">
                 <div>
                   <div className="relative w-full h-44 mb-4 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-                    <ComponentImage id={comp.id} name={comp.name} />
+                    <WebComponentImage id={comp.id} name={comp.name} />
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none"><span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-950/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-cyan-400 shadow-sm">{comp.category.replace('_', ' ')}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md bg-slate-900/80 text-white border border-slate-700/50">{comp.difficulty}</span></div>
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition mb-1">{comp.name}</h3>
