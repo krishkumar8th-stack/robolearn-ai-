@@ -17,63 +17,54 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const defaultDemoUser: User = {
-  id: 'krish-kumar',
-  username: 'krishkumar',
-  fullName: 'Krish Kumar',
-  email: 'kumarkrish88231@gmail.com',
-  role: 'user',
-  experienceLevel: 'Intermediate',
-  preferredLanguage: 'en',
-  preferredProgrammingLanguage: 'cpp',
-  xp: 420,
-  level: 3,
-  streak: 5,
-  lastActiveDate: new Date().toISOString(),
-  completedLessons: ['intro-robotics', 'digital-pins', 'pwm-led', 'sonar-reading'],
-  completedChallenges: ['chal-blink-sos', 'chal-reverse-sonar'],
-  completedProjects: ['proj-smart-led', 'proj-rover'],
-  learnedComponents: ['arduino-uno', 'ultrasonic-sensor', 'sg90-servo', 'dc-motor', 'esp32-devkit', 'ir-sensor'],
-  achievements: ['First Program', 'Component Explorer', '10 Challenges', 'Robotics Beginner'],
-  createdAt: new Date().toISOString()
-};
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(defaultDemoUser);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
+    const token = localStorage.getItem('roblearn_token');
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const res = await api.getMe();
       setUser(res.user);
     } catch {
-      setUser(defaultDemoUser);
       localStorage.removeItem('roblearn_token');
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('roblearn_token');
-    if (token) {
-      refreshUser();
-    } else {
-      setUser(defaultDemoUser);
-      setIsLoading(false);
-    }
+    void refreshUser();
   }, []);
 
   const login = async (email: string, pass: string) => {
-    const res = await api.login(email, pass);
-    localStorage.setItem('roblearn_token', res.token);
-    setUser(res.user);
+    setIsLoading(true);
+    try {
+      const res = await api.login(email, pass);
+      localStorage.setItem('roblearn_token', res.token);
+      setUser(res.user);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const register = async (data: any) => {
-    const res = await api.register(data);
-    localStorage.setItem('roblearn_token', res.token);
-    setUser(res.user);
+    setIsLoading(true);
+    try {
+      const res = await api.register(data);
+      localStorage.setItem('roblearn_token', res.token);
+      setUser(res.user);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
@@ -91,40 +82,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addXp = (amount: number, reason?: string) => {
-    if (!user) return;
+    if (!user || !Number.isFinite(amount) || amount <= 0) return;
     const oldLevel = user.level;
     const newXp = user.xp + amount;
     const newLevel = Math.floor(newXp / 200) + 1;
-
     setUser(prev => prev ? { ...prev, xp: newXp, level: newLevel } : null);
 
     if (newLevel > oldLevel) {
       try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (e) {
-        // Safe canvas fallback
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      } catch {
+        // Optional visual effect; progress remains updated.
       }
     }
+    void reason;
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        register,
-        logout,
-        updateProfile,
-        quickDemoLogin,
-        refreshUser,
-        addXp
-      }}
-    >
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, quickDemoLogin, refreshUser, addXp }}>
       {children}
     </AuthContext.Provider>
   );

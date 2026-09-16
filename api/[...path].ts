@@ -2,11 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import apiRouter from '../server/routes/api.js';
 import { initDatabase } from '../server/db/database.js';
+import { requestId, securityHeaders, requireJsonBody } from '../server/middleware/security.js';
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(requestId);
+app.use(securityHeaders);
+app.use(cors({ origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(v => v.trim()) : true }));
+app.use(express.json({ limit: '10mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(requireJsonBody);
 
 let databaseInit: Promise<void> | null = null;
 function ensureDatabase() {
@@ -24,25 +30,22 @@ app.use(async (_req, _res, next) => {
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'RoboLearn AI Engine' });
+  res.json({ status: 'ok', service: 'RoboLearn AI Engine', timestamp: new Date().toISOString() });
 });
 
-// Normalize the path because Vercel may invoke a catch-all function with
-// either the /api prefix preserved or already stripped.
 app.use((req, _res, next) => {
-  if (req.url === '/api') {
-    req.url = '/';
-  } else if (req.url.startsWith('/api/')) {
-    req.url = req.url.slice(4) || '/';
-  }
+  if (req.url === '/api') req.url = '/';
+  else if (req.url.startsWith('/api/')) req.url = req.url.slice(4) || '/';
   next();
 });
 
+// The Vercel catch-all receives normalized /components, /auth/*, /ai/*, etc.
 app.use(apiRouter);
 
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('API error:', error);
-  res.status(500).json({ error: error?.message || 'Internal server error' });
+  if (res.headersSent) return;
+  res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error.' : (error?.message || 'Internal server error.') });
 });
 
 export default app;
