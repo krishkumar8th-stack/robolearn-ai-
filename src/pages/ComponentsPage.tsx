@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, Search, CheckCircle2, ArrowRight, Database, ImageOff } from 'lucide-react';
+import { Cpu, Search, CheckCircle2, ArrowRight, Database } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ElectronicComponent } from '../types/index';
-import { MEDIA } from '../assets/media';
+import { ComponentImage } from '../components/ComponentImage';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Components' },
@@ -19,29 +19,6 @@ const CATEGORIES = [
   { id: 'power', label: 'Power' },
   { id: 'passive', label: 'Passives' }
 ];
-
-const getReferenceImage = (component: ElectronicComponent): string | undefined => {
-  if (component.imageUrl) return component.imageUrl;
-  const exact = MEDIA.components[component.id];
-  if (exact) return exact;
-
-  const name = component.name.toLowerCase();
-  if (name.includes('arduino') || name.includes('stm32') || name.includes('teensy') || name.includes('micro:bit')) return MEDIA.arduinoUno;
-  if (name.includes('esp32') || name.includes('esp8266') || name.includes('wifi') || name.includes('ble') || name.includes('bluetooth')) return MEDIA.esp32;
-  if (name.includes('ultrasonic') || name.includes('sonar') || name.includes('tof') || name.includes('pir') || name.includes('sensor')) return MEDIA.sonarRadar;
-  if (name.includes('servo')) return MEDIA.servo;
-  if (name.includes('motor') || name.includes('stepper') || name.includes('actuator') || name.includes('solenoid') || name.includes('pump') || name.includes('fan')) return MEDIA.rover;
-  if (name.includes('l298') || name.includes('driver') || name.includes('shield') || name.includes('relay')) return MEDIA.l298n;
-  if (name.includes('oled') || name.includes('lcd') || name.includes('display') || name.includes('matrix') || name.includes('led')) return MEDIA.ledCircuit;
-  if (name.includes('raspberry') || name.includes('jetson') || name.includes('beaglebone') || name.includes('orange pi') || name.includes('banana pi') || name.includes('rock pi') || name.includes('radxa') || name.includes('odroid') || name.includes('lattepanda') || name.includes('m5stack')) return MEDIA.arduinoUno;
-  if (component.category === 'microcontrollers' || component.category === 'computing_boards') return MEDIA.arduinoUno;
-  if (component.category === 'sensors') return MEDIA.sonarRadar;
-  if (component.category === 'actuators' || component.category === 'robotics') return MEDIA.rover;
-  if (component.category === 'communication') return MEDIA.esp32;
-  if (component.category === 'displays' || component.category === 'basic_electronics' || component.category === 'passive') return MEDIA.ledCircuit;
-  if (component.category === 'power') return MEDIA.l298n;
-  return MEDIA.breadboard;
-};
 
 export const ComponentsPage: React.FC = () => {
   const { user, addXp } = useAuth();
@@ -94,7 +71,7 @@ export const ComponentsPage: React.FC = () => {
           <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> 500+ catalog entries</span>
         </div>
         <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Electronic Component Library</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Reference photos are shown where exact verified media is unavailable, while variant-specific electrical ratings and exact pinouts remain datasheet-based.</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">Browse a large real-world component catalog. Exact verified photos are shown when available; otherwise RoboLearn automatically looks up a relevant Wikimedia Commons reference image as you scroll.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
@@ -114,16 +91,13 @@ export const ComponentsPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {components.map((comp) => {
             const learned = isLearned(comp.id);
-            const compImage = getReferenceImage(comp);
             const voltageSpec = Array.isArray(comp.specifications) ? comp.specifications.find(s => s.key.toLowerCase().includes('voltage'))?.value || 'See datasheet' : 'See datasheet';
             return (
               <Link key={comp.id} to={`/components/${comp.id}`} className="p-4 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-cyan-500/50 transition group flex flex-col justify-between shadow-sm hover:shadow-md overflow-hidden">
                 <div>
                   <div className="relative w-full h-44 mb-4 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-                    {compImage ? <img src={compImage} alt={`${comp.name} reference`} referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = MEDIA.breadboard; }} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-400 dark:text-slate-600"><ImageOff className="w-8 h-8" /><span className="text-[10px] font-semibold uppercase tracking-wider">Reference image unavailable</span></div>}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent pointer-events-none" />
+                    <ComponentImage id={comp.id} name={comp.name} />
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none"><span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-950/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/60 text-slate-800 dark:text-cyan-400 shadow-sm">{comp.category.replace('_', ' ')}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md bg-slate-900/80 text-white border border-slate-700/50">{comp.difficulty}</span></div>
-                    <div className="absolute bottom-2 left-2.5 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white">{comp.imageUrl ? 'Verified component image' : 'Reference image'}</div>
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition mb-1">{comp.name}</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">{comp.tagline}</p>
