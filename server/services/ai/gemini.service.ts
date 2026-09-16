@@ -20,10 +20,11 @@ const FAST_MODEL = process.env.AI_FAST_MODEL?.trim() || 'gemini-3.8-flash';
 
 const GENERAL_SYSTEM = `You are RoboLearn AI, a capable general-purpose AI assistant inside a student learning and coding platform.
 
-Answer the user's actual question, not just robotics questions. You can help with programming, mathematics, science, electronics, robotics, debugging, web development, study help, writing, planning, explanations, and everyday factual questions.
+Answer the user's actual question, not just robotics questions. You can help with programming, mathematics, science, electronics, robotics, debugging, web development, study help, writing, planning, and everyday factual questions.
 
 Rules for responses:
 - Be accurate, practical, and honest about uncertainty.
+- Use current web information when the question depends on recent/current facts; the API may use Google Search grounding when useful.
 - Adapt depth to the user's apparent level. Start clearly, then add depth when useful.
 - For technical questions, show concrete examples and explain important assumptions.
 - For code, provide complete runnable code when the user asks for an implementation; otherwise focus on the requested portion.
@@ -35,8 +36,8 @@ Rules for responses:
 - Keep the tone friendly and direct.`;
 
 function buildHistory(history: AIChatMessage[]): string {
-  return history.slice(-16).map(msg => {
-    const speaker = msg.sender === 'assistant' ? 'ASSISTANT' : 'USER';
+  return history.slice(-20).map(msg => {
+    const speaker = msg.sender === 'assistant' ? 'ASSISTANT' : msg.sender === 'system' ? 'SYSTEM' : 'USER';
     return `${speaker}: ${msg.content}`;
   }).join('\n');
 }
@@ -46,9 +47,9 @@ function cleanJsonText(text: string): string {
 }
 
 export const geminiService = {
-  async checkHealth(): Promise<{ status: string; hasKey: boolean; model: string }> {
+  async checkHealth(): Promise<{ status: string; hasKey: boolean; model: string; searchGrounding: boolean }> {
     const hasKey = Boolean(process.env.GEMINI_API_KEY?.trim());
-    return { status: hasKey ? 'configured' : 'missing_api_key', hasKey, model: PRIMARY_MODEL };
+    return { status: hasKey ? 'configured' : 'missing_api_key', hasKey, model: PRIMARY_MODEL, searchGrounding: hasKey };
   },
 
   async chatTutor(
@@ -77,7 +78,11 @@ export const geminiService = {
       model: FAST_MODEL,
       contents: prompt,
       config: {
-        systemInstruction: `${GENERAL_SYSTEM}\n\nYou are also the user's tutor. In hints-first mode, encourage the learner to think before revealing a full solution. In direct mode, answer directly. Do not be artificially restrictive: answer general questions even when they are outside robotics.`,
+        systemInstruction: `${GENERAL_SYSTEM}\n\nYou are also the user's tutor. In hints-first mode, encourage the learner to think before revealing a full solution. In direct mode, answer directly. Do not be artificially restrictive: answer general questions even when they are outside robotics.\n\nWhen a question depends on information that may have changed recently, use Google Search grounding. Use code execution when a calculation or executable verification materially improves the answer.`,
+        tools: [
+          { googleSearch: {} },
+          { codeExecution: {} },
+        ],
       },
     });
     return response.text?.trim() || 'I could not generate an answer right now. Please try again.';
@@ -169,17 +174,15 @@ Embedded/hardware workflow likely: ${isEmbedded ? 'yes' : 'no'}`;
 
     try {
       const parsed = JSON.parse(cleanJsonText(response.text || '{}')) as AICodeGenerationResult;
-      if (!parsed.code || !Array.isArray(parsed.requiredComponents) || !Array.isArray(parsed.wiring)) {
-        throw new Error('Invalid structured response');
-      }
+      if (!parsed.code || !Array.isArray(parsed.requiredComponents) || !Array.isArray(parsed.wiring)) throw new Error('Invalid structured response');
       return {
         ...parsed,
         language: parsed.language || language,
         requiredComponents: parsed.requiredComponents || [],
         wiring: parsed.wiring || [],
-        functionsUsed: parsed.functionsUsed || [],
-        possibleErrors: parsed.possibleErrors || [],
-        simulationActions: parsed.simulationActions || [],
+        functionsUsed: Array.isArray(parsed.functionsUsed) ? parsed.functionsUsed : [],
+        possibleErrors: Array.isArray(parsed.possibleErrors) ? parsed.possibleErrors : [],
+        simulationActions: Array.isArray(parsed.simulationActions) ? parsed.simulationActions : [],
       };
     } catch {
       throw new Error('AI returned an invalid code-generation response. Please retry.');
