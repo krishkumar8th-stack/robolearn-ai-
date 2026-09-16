@@ -6,22 +6,136 @@
   :root {
     --color-bg-primary: #f8fafc;
     --color-surface: #ffffff;
+    --color-surface-raised: #f1f5f9;
+    --color-surface-soft: #e2e8f0;
     --color-border: #e2e8f0;
+    --color-border-strong: #cbd5e1;
     --color-text-primary: #0f172a;
+    --color-text-secondary: #334155;
     --color-text-muted: #64748b;
+    --color-focus: #06b6d4;
   }
 
   .dark {
     --color-bg-primary: #090e1a;
     --color-surface: #0f172a;
+    --color-surface-raised: #111c2f;
+    --color-surface-soft: #1e293b;
     --color-border: #1e293b;
+    --color-border-strong: #334155;
     --color-text-primary: #f8fafc;
+    --color-text-secondary: #cbd5e1;
     --color-text-muted: #94a3b8;
+    --color-focus: #22d3ee;
+  }
+
+  html {
+    background: var(--color-bg-primary);
   }
 
   body {
+    min-width: 320px;
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(6 182 212 / 0.25);
+  }
+
+  input,
+  textarea,
+  select {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+  }
+
+  option {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+  }
+}
+
+/* Theme compatibility layer for legacy fixed-dark Tailwind surfaces. */
+@layer utilities {
+  .light .bg-slate-950,
+  .light .bg-slate-950\/95,
+  .light .bg-slate-950\/80,
+  .light .bg-slate-950\/60 {
+    background-color: var(--color-bg-primary) !important;
+  }
+
+  .light .bg-slate-900,
+  .light .bg-slate-900\/80,
+  .light .bg-slate-900\/60 {
+    background-color: var(--color-surface) !important;
+  }
+
+  .light .bg-slate-800,
+  .light .bg-slate-800\/80 {
+    background-color: var(--color-surface-raised) !important;
+  }
+
+  .light .bg-slate-700,
+  .light .bg-slate-700\/60 {
+    background-color: var(--color-surface-soft) !important;
+  }
+
+  .light .border-slate-800,
+  .light .border-slate-800\/60 {
+    border-color: var(--color-border) !important;
+  }
+
+  .light .border-slate-700,
+  .light .border-slate-700\/60 {
+    border-color: var(--color-border-strong) !important;
+  }
+
+  .light .text-slate-100,
+  .light .text-slate-200 {
+    color: var(--color-text-primary) !important;
+  }
+
+  .light .text-slate-300 {
+    color: var(--color-text-secondary) !important;
+  }
+
+  .light .text-slate-400,
+  .light .text-slate-500 {
+    color: var(--color-text-muted) !important;
+  }
+
+  .light .hover\:bg-slate-800:hover,
+  .light .hover\:bg-slate-700:hover {
+    background-color: var(--color-surface-soft) !important;
+  }
+
+  .light .placeholder-slate-500::placeholder,
+  .light .placeholder-slate-400::placeholder {
+    color: var(--color-text-muted) !important;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
