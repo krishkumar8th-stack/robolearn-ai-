@@ -9,6 +9,7 @@ export interface User {
   fullName: string;
   username: string;
   email: string;
+  phone?: string;
   role: UserRole;
   experienceLevel: ExperienceLevel;
   preferredLanguage: string;
@@ -29,61 +30,11 @@ export interface AuthResponse { token: string; user: User; }
 
 export type ComponentCategory = 'basic_electronics' | 'microcontrollers' | 'computing_boards' | 'sensors' | 'actuators' | 'communication' | 'robotics' | 'displays' | 'power' | 'passive';
 
-export interface PinDefinition {
-  pinNumber: number | string;
-  name: string;
-  type: 'Power' | 'Ground' | 'Digital I/O' | 'Analog Input' | 'PWM' | 'Communication' | 'Control';
-  description: string;
-  voltage?: string;
-}
-
+export interface PinDefinition { pinNumber: number | string; name: string; type: 'Power' | 'Ground' | 'Digital I/O' | 'Analog Input' | 'PWM' | 'Communication' | 'Control'; description: string; voltage?: string; }
 export interface ComponentSpecification { key: string; value: string; }
-
-export interface ComponentLearningGuide {
-  simpleExplanation: string;
-  howItWorksStepByStep: string[];
-  inputsOutputs: string;
-  whereUsed: string[];
-  keyConcepts: string[];
-  miniProject: string;
-  quickQuiz: { question: string; options: string[]; correctIndex: number; explanation: string }[];
-  remember: string[];
-}
-
-export interface ElectronicComponent {
-  id: string;
-  name: string;
-  category: ComponentCategory;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
-  tagline: string;
-  description: string;
-  imageUrl?: string;
-  modelType: 'arduino_uno' | 'esp32' | 'ultrasonic' | 'servo' | 'dc_motor' | 'led' | 'resistor' | 'buzzer' | 'ir_sensor' | 'motor_driver' | 'breadboard' | 'chassis' | 'generic';
-  whatIsIt: string;
-  whyUsed: string;
-  howItWorks: string;
-  internalWorking: string;
-  learningGuide?: ComponentLearningGuide;
-  specifications: ComponentSpecification[];
-  pins: PinDefinition[];
-  wiringGuide: { targetBoard: string; connections: { pinOnComponent: string; pinOnBoard: string; wireColor: string; notes: string }[] };
-  codeExamples: { language: string; title: string; code: string; explanation: string }[];
-  codeExampleCpp?: string;
-  codeExamplePython?: string;
-  safetyGuidelines?: string[];
-  commonMistakes: string[];
-  safetyRules: string[];
-  realWorldApplications: string[];
-  relatedComponentIds: string[];
-  quizQuestionIds?: string[];
-}
-
-export interface CourseLesson {
-  id: string; courseId: string; level: number; title: string; summary: string; durationMinutes: number; learningObjective: string; theory: string[]; imageUrl?: string; diagramDescription: string; codeSnippet: string; programmingLanguage: string;
-  simulationSetup?: { components: string[]; defaultCode: string; expectedAction: string };
-  quiz: { question: string; options: string[]; correctIndex: number; explanation: string }[];
-  challenge: { title: string; prompt: string; starterCode: string; expectedResult: string; hint: string };
-}
+export interface ComponentLearningGuide { simpleExplanation: string; howItWorksStepByStep: string[]; inputsOutputs: string; whereUsed: string[]; keyConcepts: string[]; miniProject: string; quickQuiz: { question: string; options: string[]; correctIndex: number; explanation: string }[]; remember: string[]; }
+export interface ElectronicComponent { id: string; name: string; category: ComponentCategory; difficulty: 'Beginner' | 'Intermediate' | 'Advanced'; tagline: string; description: string; imageUrl?: string; modelType: 'arduino_uno' | 'esp32' | 'ultrasonic' | 'servo' | 'dc_motor' | 'led' | 'resistor' | 'buzzer' | 'ir_sensor' | 'motor_driver' | 'breadboard' | 'chassis' | 'generic'; whatIsIt: string; whyUsed: string; howItWorks: string; internalWorking: string; learningGuide?: ComponentLearningGuide; specifications: ComponentSpecification[]; pins: PinDefinition[]; wiringGuide: { targetBoard: string; connections: { pinOnComponent: string; pinOnBoard: string; wireColor: string; notes: string }[] }[]; codeExamples: { language: string; title: string; code: string; explanation: string }[]; codeExampleCpp?: string; codeExamplePython?: string; safetyGuidelines?: string[]; commonMistakes: string[]; safetyRules: string[]; realWorldApplications: string[]; relatedComponentIds: string[]; quizQuestionIds?: string[]; }
+export interface CourseLesson { id: string; courseId: string; level: number; title: string; summary: string; durationMinutes: number; learningObjective: string; theory: string[]; imageUrl?: string; diagramDescription: string; codeSnippet: string; programmingLanguage: string; simulationSetup?: { components: string[]; defaultCode: string; expectedAction: string }; quiz: { question: string; options: string[]; correctIndex: number; explanation: string }[]; challenge: { title: string; prompt: string; starterCode: string; expectedResult: string; hint: string }; }
 export interface Course { id: string; level: number; title: string; tagline: string; description: string; imageUrl?: string; iconName: string; lessons: CourseLesson[]; }
 export interface CodingChallenge { id: string; title: string; difficulty: 'Beginner' | 'Intermediate' | 'Advanced'; category: string; imageUrl?: string; xpReward: number; problem: string; objective: string; requiredComponents: string[]; constraints: string[]; starterCode: string; programmingLanguage: string; hints: string[]; testCases: { input?: string; expectedAction: string; description: string }[]; solutionExplanation: string; }
 export interface ProjectStep { stepNumber: number; title: string; description: string; imageUrl?: string; codeSnippet?: string; circuitNote?: string; }
