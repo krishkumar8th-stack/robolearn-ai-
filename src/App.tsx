@@ -8,6 +8,7 @@ import { SimulationProvider } from './contexts/SimulationContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const Lab3DWorkbench = lazy(() => import('./components/lab/Lab3DWorkbench').then(m => ({ default: m.Lab3DWorkbench })));
@@ -26,10 +27,27 @@ const LoginPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m
 const RegisterPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.RegisterPage })));
 
 const RouteLoader = () => <div className="flex min-h-[55vh] items-center justify-center" role="status" aria-label="Loading page"><div className="h-9 w-9 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-500" /></div>;
-const RootRoute: React.FC = () => { const { user } = useAuth(); return user ? <DashboardPage /> : <LandingPage />; };
+const RootRoute: React.FC = () => { const { user, isLoading } = useAuth(); if (isLoading) return <RouteLoader />; return user ? <Navigate to="/dashboard" replace /> : <LandingPage />; };
+const Protected: React.FC<{ children: React.ReactElement }> = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
 export default function App() {
   return <BrowserRouter><AuthProvider><ThemeProvider><LanguageProvider><SimulationProvider><AppErrorBoundary><div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#070b14] dark:text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300"><Navbar /><main className="flex-1"><Suspense fallback={<RouteLoader />}><Routes>
-    <Route path="/" element={<RootRoute />} /><Route path="/landing" element={<LandingPage />} /><Route path="/lab3d" element={<Lab3DWorkbench />} /><Route path="/ai-code" element={<AICodeGeneratorPage />} /><Route path="/ai-tutor" element={<AITutorPage />} /><Route path="/components" element={<ComponentsPage />} /><Route path="/components/:id" element={<ComponentDetailLearningPage />} /><Route path="/learn" element={<RoboticsPage />} /><Route path="/learn/:courseId/:lessonId" element={<LessonDetailPage />} /><Route path="/programming" element={<ProgrammingPage />} /><Route path="/challenges" element={<ChallengesPage />} /><Route path="/projects" element={<ProjectsPage />} /><Route path="/dashboard" element={<DashboardPage />} /><Route path="/achievements" element={<AchievementsPage />} /><Route path="/login" element={<LoginPage />} /><Route path="/register" element={<RegisterPage />} /><Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="/" element={<RootRoute />} />
+    <Route path="/landing" element={<LandingPage />} />
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/register" element={<RegisterPage />} />
+    <Route path="/lab3d" element={<Protected><Lab3DWorkbench /></Protected>} />
+    <Route path="/ai-code" element={<Protected><AICodeGeneratorPage /></Protected>} />
+    <Route path="/ai-tutor" element={<Protected><AITutorPage /></Protected>} />
+    <Route path="/components" element={<Protected><ComponentsPage /></Protected>} />
+    <Route path="/components/:id" element={<Protected><ComponentDetailLearningPage /></Protected>} />
+    <Route path="/learn" element={<Protected><RoboticsPage /></Protected>} />
+    <Route path="/learn/:courseId/:lessonId" element={<Protected><LessonDetailPage /></Protected>} />
+    <Route path="/programming" element={<Protected><ProgrammingPage /></Protected>} />
+    <Route path="/challenges" element={<Protected><ChallengesPage /></Protected>} />
+    <Route path="/projects" element={<Protected><ProjectsPage /></Protected>} />
+    <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
+    <Route path="/achievements" element={<Protected><AchievementsPage /></Protected>} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></main><Footer /></div></AppErrorBoundary><Analytics /></SimulationProvider></LanguageProvider></ThemeProvider></AuthProvider></BrowserRouter>;
 }
