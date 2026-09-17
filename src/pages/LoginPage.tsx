@@ -7,81 +7,9 @@ const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5
 const primaryButton = 'flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50';
 
 export const LoginPage: React.FC = () => {
-  const { login, isLoading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const redirectAfterAuth = () => {
-    const from = (location.state as { from?: string } | null)?.from;
-    navigate(from && from !== '/login' && from !== '/register' ? from : '/dashboard', { replace: true });
-  };
-
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLoading) return;
-    setError(null);
-    try {
-      await login(email.trim(), password);
-      redirectAfterAuth();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your email and password.');
-    }
-  };
-
-  return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500">
-            <Bot className="h-6 w-6" />
-          </div>
-          <h2 className="text-2xl font-black">Welcome Back</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sign in to your RoboLearn AI account</p>
-        </div>
-
-        {error && (
-          <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handlePasswordLogin} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-bold text-slate-500">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className={`${inputClass} pl-10`} />
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-1 flex justify-between">
-              <label className="text-xs font-bold text-slate-500">Password</label>
-              <Link to="/forgot-password" className="text-xs font-bold text-cyan-500 hover:underline">Forgot password?</Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" className={`${inputClass} pl-10 pr-11`} />
-              <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400">
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <button disabled={isLoading || !email.trim() || !password} className={primaryButton}>
-            {isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign In'}
-          </button>
-        </form>
-
-        <p className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-500 dark:border-slate-800">
-          Don't have an account? <Link to="/register" className="font-bold text-cyan-500">Create one</Link>
-        </p>
-      </div>
-    </div>
-  );
+  const { login, isLoading } = useAuth(); const navigate = useNavigate(); const location = useLocation();
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState<string | null>(null);
+  const redirectAfterAuth = () => { const from = (location.state as { from?: string } | null)?.from; navigate(from && from !== '/login' && from !== '/register' ? from : '/dashboard', { replace: true }); };
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (isLoading) return; setError(null); try { await login(email.trim(), password); redirectAfterAuth(); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Login failed. Please check your email and password.'); } };
+  return <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100"><div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"><div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500"><Bot className="h-6 w-6" /></div><h2 className="text-2xl font-black">Welcome Back</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sign in to your RoboLearn AI account</p></div>{error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}<form onSubmit={handleSubmit} className="space-y-4"><div><label className="mb-1 block text-xs font-bold text-slate-500">Email Address</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className={`${inputClass} pl-10`} /></div></div><div><label className="mb-1 block text-xs font-bold text-slate-500">Password</label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" className={`${inputClass} pl-10 pr-11`} /><button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div><button disabled={isLoading || !email.trim() || !password} className={primaryButton}>{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign In'}</button></form><p className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-500 dark:border-slate-800">Don't have an account? <Link to="/register" className="font-bold text-cyan-500">Create one</Link></p></div></div>;
 };
