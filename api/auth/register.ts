@@ -7,7 +7,7 @@ const text = (value: unknown, max: number) => typeof value === 'string' ? value.
 export default async function handler(req: any, res: any) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
-  if (!JWT_SECRET) return res.status(500).json({ error: 'Authentication is not configured on the server.' });
+  if (!JWT_SECRET) return res.status(500).json({ error: 'Authentication is not configured on the server. Add JWT_SECRET to the Vercel environment.' });
 
   try {
     await initDatabase();
@@ -43,6 +43,13 @@ export default async function handler(req: any, res: any) {
   } catch (error: any) {
     console.error('Register error:', error);
     if (error?.code === 11000) return res.status(409).json({ error: 'That email or username is already registered.' });
-    return res.status(500).json({ error: 'Unable to create your account right now. Please try again.' });
+    const message = String(error?.message || '');
+    if (message.includes('MONGODB_URI') || message.includes('MongoDB connection failed')) {
+      return res.status(503).json({ error: 'Database connection failed. Check MONGODB_URI and MongoDB Atlas Network Access for this Vercel environment.' });
+    }
+    if (message.toLowerCase().includes('jwt')) {
+      return res.status(500).json({ error: 'Authentication configuration is invalid. Check JWT_SECRET in Vercel.' });
+    }
+    return res.status(500).json({ error: 'Unable to create your account right now. Check the Vercel function logs for the registration error.' });
   }
 }
