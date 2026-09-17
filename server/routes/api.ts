@@ -135,7 +135,8 @@ router.get('/auth/me', async (req: Request, res: Response) => {
   const user = await dbService.findUserById(userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
   const { passwordHash, ...userWithoutPassword } = user;
-  return res.json({ user: userWithoutPassword });
+  const effectiveRole = isOwnerEmail(user.email) ? 'admin' : user.role;
+  return res.json({ user: { ...userWithoutPassword, role: effectiveRole } });
 });
 
 router.put('/auth/profile', async (req: Request, res: Response) => {
