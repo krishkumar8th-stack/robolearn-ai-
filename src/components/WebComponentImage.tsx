@@ -21,6 +21,14 @@ const ROBU_PRODUCT_URLS: Record<string, string> = {
   'RC522 RFID Reader/Writer SPI': 'https://robu.in/product/rc522-rfid-reader-writer-module-with-card-and-tag/',
   'DS3231 RTC Module': 'https://robu.in/product/ds3231-rtc-module-precise-real-time-clock-i2c-at24c32/',
   'PCA9685 16-Channel Servo Driver': 'https://robu.in/product/16-channel-12-bit-pwm-servo-driver-i2c-interface-pca9685-for-arduino-raspberry-pi/',
+  'Arduino Nano ESP32': 'https://robu.in/product/arduino-nano-esp32-s3/',
+  'ESP32-S3 Development Board': 'https://robu.in/product/espressif-esp32-s3-devkitc-1-n8r8-development-board/',
+  'MG996R Metal Gear Servo': 'https://robu.in/product/towerpro-mg996r-digital-high-torque-servo-motor/',
+  'NEO-M8N / M9N GPS': 'https://robu.in/product-category/gps-module/',
+  'GPS NEO-6M': 'https://robu.in/product/neo-6m-gps-module-with-eprom-normal-quality/',
+  'BMP280 / BME280': 'https://robu.in/product-category/environmental-sensor/',
+  'RPLIDAR A1M8 2D LiDAR': 'https://robu.in/product-category/lidar-sensor/',
+  'RPLIDAR A1M8 / A2': 'https://robu.in/product-category/lidar-sensor/',
 };
 
 const SEARCH_ALIASES: Record<string, string[]> = {
