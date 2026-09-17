@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { User, ElectronicComponent, Course, CodingChallenge, RoboticsProject, Achievement, AIChatMessage } from '../../src/types/index.js';
 import { SEED_COMPONENTS, SEED_COURSES, SEED_CHALLENGES, SEED_PROJECTS, SEED_ACHIEVEMENTS } from './seedData.js';
+import { MISSING_ROBOTICS_LEVELS } from '../../src/data/roboticsLevels.js';
 import { COMPONENT_CATALOG, catalogEntryToComponent } from '../../src/data/componentCatalog.js';
 
 interface InMemoryStore {
@@ -31,6 +32,7 @@ for (const entry of COMPONENT_CATALOG) {
   if (!store.components.has(entry.id)) store.components.set(entry.id, catalogEntryToComponent(entry));
 }
 for (const course of SEED_COURSES) store.courses.set(course.id, course);
+for (const course of MISSING_ROBOTICS_LEVELS) store.courses.set(course.id, course);
 for (const chal of SEED_CHALLENGES) store.challenges.set(chal.id, chal);
 for (const proj of SEED_PROJECTS) store.projects.set(proj.id, proj);
 for (const ach of SEED_ACHIEVEMENTS) store.achievements.set(ach.id, ach);
