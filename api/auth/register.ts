@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { dbService } from '../../server/db/database.js';
+import { dbService, initDatabase } from '../../server/db/database.js';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
 const text = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -10,6 +10,7 @@ export default async function handler(req: any, res: any) {
   if (!JWT_SECRET) return res.status(500).json({ error: 'Authentication is not configured on the server.' });
 
   try {
+    await initDatabase();
     const fullName = text(req.body?.fullName, 120);
     const username = text(req.body?.username, 40).toLowerCase();
     const email = text(req.body?.email, 160).toLowerCase();
