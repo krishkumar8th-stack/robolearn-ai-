@@ -25,7 +25,6 @@ const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage').then(m 
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage').then(m => ({ default: m.AchievementsPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.RegisterPage })));
-const ForgotPasswordPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.ForgotPasswordPage })));
 
 const RouteLoader = () => <div className="flex min-h-[55vh] items-center justify-center" role="status" aria-label="Loading page"><div className="h-9 w-9 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-500" /></div>;
 const RootRoute: React.FC = () => { const { user, isLoading } = useAuth(); if (isLoading) return <RouteLoader />; return user ? <Navigate to="/dashboard" replace /> : <LandingPage />; };
@@ -37,7 +36,6 @@ export default function App() {
     <Route path="/landing" element={<LandingPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<RegisterPage />} />
-    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
     <Route path="/lab3d" element={<Protected><Lab3DWorkbench /></Protected>} />
     <Route path="/ai-code" element={<Protected><AICodeGeneratorPage /></Protected>} />
     <Route path="/ai-tutor" element={<Protected><AITutorPage /></Protected>} />
