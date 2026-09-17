@@ -5,7 +5,7 @@ import { MEDIA } from '../assets/media';
 type ImageState = {
   url: string | null;
   sourceUrl?: string;
-  source: 'verified' | 'openverse' | 'wikimedia' | 'fallback' | 'none';
+  source: 'verified' | 'openverse' | 'wikimedia' | 'none';
 };
 
 const memoryCache = new Map<string, ImageState>();
@@ -178,7 +178,7 @@ export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, 
     return () => { cancelled = true; };
   }, [started, localImage, state.url, id, name]);
 
-  const sourceLabel = state.source === 'verified' ? 'Verified asset' : state.source === 'openverse' ? 'Web photo · Openverse' : state.source === 'wikimedia' ? 'Web photo · Wikimedia' : state.source === 'fallback' ? 'Reference photo' : '';
+  const sourceLabel = state.source === 'verified' ? 'Verified asset' : state.source === 'openverse' ? 'Web photo · Openverse' : state.source === 'wikimedia' ? 'Web photo · Wikimedia' : '';
 
   return (
     <div ref={ref} className="relative w-full h-full">
@@ -192,7 +192,7 @@ export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, 
           onError={() => {
             if (state.source === 'openverse' || state.source === 'wikimedia') {
               localStorage.removeItem(cacheKey(id, name));
-              setState({ url: MEDIA.breadboard, source: 'fallback' });
+              setState({ url: null, source: 'none' });
             }
           }}
         />
