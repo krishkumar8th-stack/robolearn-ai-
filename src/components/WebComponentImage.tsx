@@ -10,6 +10,31 @@ type ImageState = {
 
 const memoryCache = new Map<string, ImageState>();
 
+const SEARCH_ALIASES: Record<string, string[]> = {
+  'Arduino Uno R3/R4': ['Arduino Uno R3', 'Arduino Uno Rev3'],
+  'ESP32 WROOM': ['ESP32-WROOM-32', 'ESP32 DevKit'],
+  'HC-SR04 Ultrasonic Sensor': ['HC-SR04 Ultrasonic Sensor'],
+  'TCRT5000 IR Module': ['TCRT5000'],
+  'SG90 Micro Servo (9g)': ['TowerPro SG90 servo', 'SG90 micro servo'],
+  'MG996R Metal Gear Servo': ['MG996R servo'],
+  'L298N H-Bridge Driver': ['L298N motor driver module'],
+  'TB6612FNG Driver': ['TB6612FNG motor driver'],
+  'RC522 RFID Reader/Writer SPI': ['MFRC522 RC522 RFID module'],
+  'DS3231 RTC Module': ['DS3231 RTC module'],
+  'PCA9685 16-Channel Servo Driver': ['PCA9685 16-channel PWM servo driver'],
+  'MAX7219 8-Digit Display Driver': ['MAX7219 8 digit LED display'],
+  'TM1637 4-Digit Display Module': ['TM1637 4 digit display'],
+  'DS18B20 Waterproof Temperature Probe': ['DS18B20 waterproof temperature sensor'],
+  'BH1750 Ambient Light Sensor': ['BH1750 light sensor'],
+  'ADXL345 3-Axis Accelerometer': ['ADXL345 accelerometer'],
+  'Thumb Joystick Module': ['thumb joystick module'],
+  '4-Channel 5V Relay Module': ['4 channel relay module'],
+  'Arduino Nano ESP32': ['Arduino Nano ESP32'],
+  'ESP32-S3 Development Board': ['ESP32-S3 development board'],
+  'RPLIDAR A1M8 2D LiDAR': ['RPLIDAR A1']
+};
+
+
 const clean = (value: string) => value
   .toLowerCase()
   .replace(/\b(v\d+|r\d+|rev\.?\s*\d+)\b/gi, ' ')
@@ -35,7 +60,8 @@ function scoreTitle(name: string, title: string) {
 }
 
 async function searchOpenverse(name: string): Promise<ImageState | null> {
-  const queries = [`"${name}"`, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  const aliases = SEARCH_ALIASES[name] || [];
+  const queries = [...aliases, `"${name}"`, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
   for (const q of queries) {
     try {
       const params = new URLSearchParams({ q, page_size: '8', mature: 'false' });
@@ -65,7 +91,8 @@ async function searchOpenverse(name: string): Promise<ImageState | null> {
 }
 
 async function searchWikimedia(name: string): Promise<ImageState | null> {
-  const queries = [`intitle:"${name}"`, name, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  const aliases = SEARCH_ALIASES[name] || [];
+  const queries = [...aliases.map((q) => `intitle:"${q}"`), `intitle:"${name}"`, ...aliases, name, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
   for (const query of queries) {
     try {
       const params = new URLSearchParams({
@@ -145,7 +172,7 @@ export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, 
         localStorage.setItem(key, JSON.stringify(result));
         setState(result);
       } else {
-        setState({ url: MEDIA.breadboard, source: 'fallback' });
+        setState({ url: null, source: 'none' });
       }
     })();
     return () => { cancelled = true; };
