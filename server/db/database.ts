@@ -15,6 +15,7 @@ interface InMemoryStore {
 }
 
 type StoredUser = User & { passwordHash: string };
+type MongoStoredUser = StoredUser & { _id?: string };
 
 const store: InMemoryStore = {
   components: new Map(),
@@ -117,7 +118,7 @@ const featuredComponents = buildFeaturedComponents();
 let isMongoConnected = false;
 
 function usersCollection() {
-  return mongoose.connection.db?.collection<StoredUser>('roblearn_users');
+  return mongoose.connection.db?.collection<MongoStoredUser>('roblearn_users');
 }
 
 export async function initDatabase() {
@@ -253,15 +254,16 @@ export const dbService = {
   async getProjects() { return Array.from(store.projects.values()); },
   async getProjectById(id: string) { return store.projects.get(id) || null; },
   async getAchievements() { return Array.from(store.achievements.values()); },
-  async getConversation(id: string) { return store.conversations.get(id) || null; },
-  async saveConversation(id: string, userId: string, title: string, messages: AIChatMessage[]) {
-    const conv = { id, userId, title, messages, updatedAt: new Date().toISOString() };
-    store.conversations.set(id, conv);
-    return conv;
+  async getAchievementById(id: string) { return store.achievements.get(id) || null; },
+  async getConversations(userId: string) {
+    return Array.from(store.conversations.values()).filter(c => c.userId === userId);
   },
-  async getUserConversations(userId: string) {
-    return Array.from(store.conversations.values())
-      .filter(c => c.userId === userId)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  async getConversationById(id: string, userId: string) {
+    const conversation = store.conversations.get(id);
+    return conversation?.userId === userId ? conversation : null;
+  },
+  async saveConversation(conversation: { id: string; userId: string; title: string; messages: AIChatMessage[]; updatedAt: string }) {
+    store.conversations.set(conversation.id, conversation);
+    return conversation;
   }
 };
