@@ -21,7 +21,7 @@ const LessonDetailPage = lazy(() => import('./pages/LessonDetailPage').then(m =>
 const ProgrammingPage = lazy(() => import('./pages/ProgrammingPage').then(m => ({ default: m.ProgrammingPage })));
 const ChallengesPage = lazy(() => import('./pages/ChallengesPage').then(m => ({ default: m.ChallengesPage })));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage').then(m => ({ default: m.UserDashboardPage })));
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage').then(m => ({ default: m.AchievementsPage })));
 const LoginPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.RegisterPage })));
@@ -46,7 +46,7 @@ export default function App() {
     <Route path="/programming" element={<Protected><ProgrammingPage /></Protected>} />
     <Route path="/challenges" element={<Protected><ChallengesPage /></Protected>} />
     <Route path="/projects" element={<Protected><ProjectsPage /></Protected>} />
-    <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
+    <Route path="/dashboard" element={<Protected><UserDashboardPage /></Protected>} />
     <Route path="/achievements" element={<Protected><AchievementsPage /></Protected>} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></main><Footer /></div></AppErrorBoundary><Analytics /></SimulationProvider></LanguageProvider></ThemeProvider></AuthProvider></BrowserRouter>;
