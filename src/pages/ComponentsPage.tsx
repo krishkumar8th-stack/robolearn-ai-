@@ -4,6 +4,7 @@ import { Cpu, Search, CheckCircle2, ArrowRight, Database } from 'lucide-react';
 import { catalogEntryToComponent } from '../data/componentCatalog';
 import { PDF_COMPONENT_CATALOG } from '../data/pdfComponentCatalog';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
 import { WebComponentImage } from '../components/WebComponentImage';
 
 const CATEGORIES = [
@@ -39,10 +40,14 @@ export const ComponentsPage: React.FC = () => {
   const handleMarkLearned = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    // Local learning reward for PDF-reference components; avoids sending IDs
-    // that do not exist in the legacy server seed store.
-    addXp(30, 'Component Learned');
-    void id;
+    void (async () => {
+      try {
+        await api.markComponentLearned(id);
+        await refreshUser();
+      } catch {
+        // Keep the card interactive even if persistence is temporarily unavailable.
+      }
+    })();
   };
 
   const isLearned = (id: string) => Boolean(user?.learnedComponents?.includes(id));
