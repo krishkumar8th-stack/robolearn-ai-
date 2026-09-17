@@ -7,7 +7,6 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  loginWithOtp: (phone: string, code: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -58,12 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { void refreshUser(); }, []);
   useEffect(() => { if (!user || typeof window === 'undefined') return; syncDashboardStats(user); if (window.location.pathname !== '/dashboard') return; let scheduled = false; const observer = new MutationObserver(() => { if (scheduled) return; scheduled = true; window.requestAnimationFrame(() => { scheduled = false; syncDashboardStats(user); }); }); const root = document.querySelector('main'); if (root) observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true }); return () => observer.disconnect(); }, [user]);
   const login = async (email: string, pass: string) => { setIsLoading(true); try { const res = await api.login(email.trim(), pass); validateAuthResponse(res); localStorage.setItem(TOKEN_KEY, res.token as string); setUser(res.user as User); } catch (error) { localStorage.removeItem(TOKEN_KEY); setUser(null); throw error; } finally { setIsLoading(false); } };
-  const loginWithOtp = async (phone: string, code: string) => { setIsLoading(true); try { const res = await api.loginWithOtp(phone, code); validateAuthResponse(res); localStorage.setItem(TOKEN_KEY, res.token as string); setUser(res.user as User); } catch (error) { localStorage.removeItem(TOKEN_KEY); setUser(null); throw error; } finally { setIsLoading(false); } };
   const register = async (data: any) => { setIsLoading(true); try { const res = await api.register(data); validateAuthResponse(res); localStorage.setItem(TOKEN_KEY, res.token as string); setUser(res.user as User); } catch (error) { localStorage.removeItem(TOKEN_KEY); setUser(null); throw error; } finally { setIsLoading(false); } };
   const logout = () => { localStorage.removeItem(TOKEN_KEY); setUser(null); };
   const updateProfile = async (data: Partial<User>) => { const res = await api.updateProfile(data); if (!res?.user) throw new Error('Profile update returned an invalid response.'); setUser(res.user); };
   const addXp = (amount: number, reason?: string) => { if (!user || !Number.isFinite(amount) || amount <= 0) return; const oldLevel = user.level; const newXp = user.xp + amount; const newLevel = Math.floor(newXp / 200) + 1; setUser(prev => prev ? { ...prev, xp: newXp, level: newLevel } : null); void api.updateProfile({ xp: newXp, level: newLevel }).then((res) => { if (res?.user) setUser(res.user); }).catch(() => {}); if (newLevel > oldLevel) { try { confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } }); } catch {} } void reason; };
-  return <AuthContext.Provider value={{ user, isLoading, login, loginWithOtp, register, logout, updateProfile, refreshUser, addXp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, refreshUser, addXp }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth() { const context = useContext(AuthContext); if (!context) throw new Error('useAuth must be used within an AuthProvider'); return context; }
