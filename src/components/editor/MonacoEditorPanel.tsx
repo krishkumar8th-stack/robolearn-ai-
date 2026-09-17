@@ -74,7 +74,7 @@ void loop() {
   const [copied, setCopied] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState(targetBoard);
 
-  const { runActions, appendLog } = useSimulation();
+  const { state, runActions, appendLog } = useSimulation();
 
   const handleEditorChange = (value: string | undefined) => {
     const updated = value || '';
@@ -86,7 +86,7 @@ void loop() {
     setIsInterpreting(true);
     appendLog('[COMPILER] Verifying and parsing code for hardware simulator...', 'info');
     try {
-      const res = await api.interpretCode(code, language);
+      const res = await api.interpretCode(code, language, state.obstacle.distanceToRobot);
       if (res.success && res.actions.length > 0) {
         appendLog(`[SIMULATOR] ${res.message}`, 'info');
         runActions(res.actions, res.logs);
@@ -432,7 +432,7 @@ void loop() {
       <div className="flex items-center justify-between px-4 py-2 bg-slate-950 text-[11px] text-slate-400 border-t border-slate-800 font-mono">
         <div className="flex items-center gap-3">
           <span>Target: <strong className="text-slate-300">{selectedBoard}</strong></span>
-          <span>Syntax: <strong className="text-emerald-400">Valid</strong></span>
+          <span>Simulator: <strong className="text-cyan-400">Arduino C/C++ subset</strong></span>
         </div>
         <div>
           <span>Lines: {code.split('\n').length} | UTF-8</span>
