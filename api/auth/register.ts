@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { dbService, initDatabase } from '../../server/db/database.js';
-import { findUserByPhone, normalizeIndianPhone, setUserPhone } from '../../server/services/otp.js';
+import { findUserByPhone, normalizeIndianPhone, setUserPhone, verifyRegistrationVerificationToken } from '../../server/services/otp.js';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
 const text = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -9,45 +9,22 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
   if (!JWT_SECRET) return res.status(500).json({ error: 'Authentication is not configured on the server. Add JWT_SECRET to the Vercel environment.' });
-
   try {
     await initDatabase();
-    const fullName = text(req.body?.fullName, 120);
-    const username = text(req.body?.username, 40).toLowerCase();
-    const email = text(req.body?.email, 160).toLowerCase();
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    const rawPhone = text(req.body?.phone, 20);
-    const phone = rawPhone ? normalizeIndianPhone(rawPhone) : '';
-
-    if (!email || !password || !fullName || !username) return res.status(400).json({ error: 'Please provide full name, username, email, and password.' });
+    const fullName = text(req.body?.fullName, 120); const username = text(req.body?.username, 40).toLowerCase(); const email = text(req.body?.email, 160).toLowerCase(); const password = typeof req.body?.password === 'string' ? req.body.password : ''; const phone = normalizeIndianPhone(req.body?.phone); const registrationToken = text(req.body?.registrationToken, 1000);
+    if (!email || !password || !fullName || !username || !phone) return res.status(400).json({ error: 'Please provide your name, username, email, mobile number, and password.' });
     if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
     if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
-    if (rawPhone && !phone) return res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.' });
-
+    if (!registrationToken) return res.status(400).json({ error: 'Please verify your mobile number with OTP before creating the account.' });
+    try { verifyRegistrationVerificationToken(registrationToken, phone); } catch { return res.status(401).json({ error: 'Mobile verification expired or does not match. Please verify the number again.' }); }
     if (await dbService.findUserByEmail(email)) return res.status(409).json({ error: 'An account with this email address already exists.' });
     if (await dbService.findUserByUsername(username)) return res.status(409).json({ error: 'That username is already taken.' });
-    if (phone && await findUserByPhone(phone)) return res.status(409).json({ error: 'That mobile number is already linked to another account.' });
-
-    let newUser = await dbService.createUser({
-      fullName,
-      username,
-      email,
-      role: 'user',
-      experienceLevel: req.body?.experienceLevel || 'Beginner',
-      preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage || 'cpp',
-      preferredLanguage: req.body?.preferredLanguage || 'en',
-      lastActiveDate: new Date().toISOString(),
-      password
-    } as any);
-
-    if (phone) {
-      newUser = (await setUserPhone(newUser.id, phone)) || newUser;
-    }
-
+    if (await findUserByPhone(phone)) return res.status(409).json({ error: 'That mobile number is already linked to another account.' });
+    let newUser = await dbService.createUser({ fullName, username, email, role: 'user', experienceLevel: req.body?.experienceLevel || 'Beginner', preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage || 'cpp', preferredLanguage: req.body?.preferredLanguage || 'en', lastActiveDate: new Date().toISOString(), password } as any);
+    newUser = (await setUserPhone(newUser.id, phone)) || newUser;
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
-    const { passwordHash, ...userWithoutPassword } = newUser;
-    void passwordHash;
+    const { passwordHash, ...userWithoutPassword } = newUser; void passwordHash;
     return res.status(201).json({ token, user: userWithoutPassword });
   } catch (error: any) {
     console.error('Register error:', error);
