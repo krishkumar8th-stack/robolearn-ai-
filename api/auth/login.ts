@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { dbService } from '../../server/db/database.js';
+import { dbService, initDatabase } from '../../server/db/database.js';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
 
@@ -10,6 +10,7 @@ export default async function handler(req: any, res: any) {
   if (!JWT_SECRET) return res.status(500).json({ error: 'Authentication is not configured on the server.' });
 
   try {
+    await initDatabase();
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
@@ -21,6 +22,7 @@ export default async function handler(req: any, res: any) {
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     const { passwordHash, ...userWithoutPassword } = user;
+    void passwordHash;
     return res.status(200).json({ token, user: userWithoutPassword });
   } catch (error) {
     console.error('Login error:', error);
