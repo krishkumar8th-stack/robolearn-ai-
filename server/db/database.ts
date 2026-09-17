@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 import { User, ElectronicComponent, Course, CodingChallenge, RoboticsProject, Achievement, AIChatMessage } from '../../src/types/index.js';
 import { SEED_COMPONENTS, SEED_COURSES, SEED_CHALLENGES, SEED_PROJECTS, SEED_ACHIEVEMENTS } from './seedData.js';
 import { COMPONENT_CATALOG, catalogEntryToComponent } from '../../src/data/componentCatalog.js';
 
 interface InMemoryStore {
-  users: Map<string, User & { passwordHash: string }>;
   components: Map<string, ElectronicComponent>;
   courses: Map<string, Course>;
   challenges: Map<string, CodingChallenge>;
@@ -17,7 +17,6 @@ interface InMemoryStore {
 type StoredUser = User & { passwordHash: string };
 
 const store: InMemoryStore = {
-  users: new Map(),
   components: new Map(),
   courses: new Map(),
   challenges: new Map(),
@@ -115,30 +114,6 @@ function buildFeaturedComponents(): ElectronicComponent[] {
 
 const featuredComponents = buildFeaturedComponents();
 
-const demoPasswordHash = bcrypt.hashSync('maker123', 10);
-const demoUser: StoredUser = {
-  id: 'user-demo-1',
-  fullName: 'Alex River',
-  username: 'maker_alex',
-  email: 'maker@roblearn.ai',
-  role: 'user',
-  experienceLevel: 'Beginner',
-  preferredLanguage: 'en',
-  preferredProgrammingLanguage: 'cpp',
-  xp: 350,
-  level: 2,
-  streak: 5,
-  lastActiveDate: new Date().toISOString(),
-  completedLessons: ['l1-variables'],
-  completedChallenges: ['ch-1-led-on'],
-  completedProjects: [],
-  learnedComponents: ['arduino-uno', 'led', 'resistor'],
-  achievements: ['first-program'],
-  createdAt: new Date().toISOString(),
-  passwordHash: demoPasswordHash
-};
-store.users.set(demoUser.id, demoUser);
-
 let isMongoConnected = false;
 
 function usersCollection() {
@@ -146,71 +121,83 @@ function usersCollection() {
 }
 
 export async function initDatabase() {
-  const mongoUri = process.env.MONGODB_URI;
-  if (mongoUri && mongoUri.trim().length > 0) {
-    try {
-      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
-      isMongoConnected = true;
-      const collection = usersCollection();
-      if (collection) {
-        await collection.createIndex({ email: 1 }, { unique: true });
-        await collection.updateOne({ _id: demoUser.id }, { $setOnInsert: { ...demoUser, _id: demoUser.id } }, { upsert: true });
-      }
-      console.log('MongoDB connected successfully; user data persistence enabled.');
-    } catch (err: any) {
-      isMongoConnected = false;
-      console.warn('MongoDB connection failed; using in-memory fallback:', err.message);
-    }
-  } else {
-    console.log(`No MONGODB_URI provided. Initialized local data store with ${featuredComponents.length} curated component records.`);
+  if (isMongoConnected) return;
+
+  const mongoUri = process.env.MONGODB_URI?.trim();
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI is required. Configure MongoDB before starting RoboLearn AI.');
   }
+
+  try {
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    const collection = usersCollection();
+    if (!collection) throw new Error('MongoDB connected but the users collection handle is unavailable.');
+
+    await collection.createIndexes([
+      { key: { email: 1 }, name: 'uniq_roblearn_user_email', unique: true },
+      { key: { username: 1 }, name: 'uniq_roblearn_user_username', unique: true }
+    ]);
+
+    // Remove the legacy seeded demo account if an older deployment created it.
+    await collection.deleteOne({ _id: 'user-demo-1' });
+    isMongoConnected = true;
+    console.log('MongoDB connected successfully; real user persistence enabled.');
+  } catch (err: any) {
+    isMongoConnected = false;
+    try { await mongoose.disconnect(); } catch { /* cleanup only */ }
+    throw new Error(`MongoDB connection failed: ${err?.message || 'unknown error'}`);
+  }
+}
+
+function requireUsersCollection() {
+  if (!isMongoConnected) throw new Error('MongoDB is not initialized. Configure MONGODB_URI and restart the API.');
+  const collection = usersCollection();
+  if (!collection) throw new Error('MongoDB connection is unavailable.');
+  return collection;
 }
 
 async function findUserByEmail(email: string): Promise<StoredUser | null> {
   const normalized = email.toLowerCase().trim();
-  if (isMongoConnected) {
-    const found = await usersCollection()?.findOne({ email: normalized });
-    if (found) return { ...found, id: found.id || String((found as any)._id) } as StoredUser;
-    return null;
-  }
-  for (const user of store.users.values()) if (user.email.toLowerCase() === normalized) return user;
-  return null;
+  const found = await requireUsersCollection().findOne({ email: normalized });
+  return found ? ({ ...found, id: found.id || String((found as any)._id) } as StoredUser) : null;
+}
+
+async function findUserByUsername(username: string): Promise<StoredUser | null> {
+  const normalized = username.toLowerCase().trim();
+  const found = await requireUsersCollection().findOne({ username: normalized });
+  return found ? ({ ...found, id: found.id || String((found as any)._id) } as StoredUser) : null;
 }
 
 async function findUserById(id: string): Promise<StoredUser | null> {
-  if (isMongoConnected) {
-    const found = await usersCollection()?.findOne({ _id: id });
-    return found ? ({ ...found, id: found.id || id } as StoredUser) : null;
-  }
-  return store.users.get(id) || null;
+  const found = await requireUsersCollection().findOne({ _id: id });
+  return found ? ({ ...found, id: found.id || id } as StoredUser) : null;
 }
 
 async function saveUser(user: StoredUser): Promise<StoredUser> {
-  if (isMongoConnected) {
-    const collection = usersCollection();
-    if (!collection) throw new Error('MongoDB is connected but its database handle is unavailable.');
-    await collection.replaceOne({ _id: user.id }, { ...user, _id: user.id }, { upsert: true });
-    return user;
-  }
-  store.users.set(user.id, user);
+  const collection = requireUsersCollection();
+  await collection.replaceOne({ _id: user.id }, { ...user, _id: user.id }, { upsert: true });
   return user;
 }
 
 export const dbService = {
   async findUserByEmail(email: string) { return findUserByEmail(email); },
+  async findUserByUsername(username: string) { return findUserByUsername(username); },
   async findUserById(id: string) { return findUserById(id); },
 
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'xp' | 'level' | 'streak' | 'completedLessons' | 'completedChallenges' | 'completedProjects' | 'learnedComponents' | 'achievements'> & { password: string }) {
     const normalizedEmail = userData.email.toLowerCase().trim();
-    const existing = await findUserByEmail(normalizedEmail);
-    if (existing) throw new Error('An account with this email address already exists.');
+    const normalizedUsername = userData.username.toLowerCase().trim();
+    const existingEmail = await findUserByEmail(normalizedEmail);
+    if (existingEmail) throw new Error('An account with this email address already exists.');
+    const existingUsername = await findUserByUsername(normalizedUsername);
+    if (existingUsername) throw new Error('That username is already taken.');
 
-    const id = 'usr_' + Math.random().toString(36).substring(2, 10);
+    const id = `usr_${randomUUID()}`;
     const passwordHash = await bcrypt.hash(userData.password, 10);
     const newUser: StoredUser = {
       id,
       fullName: userData.fullName.trim(),
-      username: userData.username.trim(),
+      username: normalizedUsername,
       email: normalizedEmail,
       role: userData.role || 'user',
       experienceLevel: userData.experienceLevel || 'Beginner',

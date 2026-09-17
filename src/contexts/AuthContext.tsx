@@ -10,7 +10,6 @@ interface AuthContextType {
   register: (data: any) => Promise<void>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
-  quickDemoLogin: () => Promise<void>;
   refreshUser: () => Promise<void>;
   addXp: (amount: number, reason?: string) => void;
 }
@@ -103,10 +102,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.user);
   };
 
-  const quickDemoLogin = async () => {
-    await login('maker@roblearn.ai', 'maker123');
-  };
-
   const addXp = (amount: number, reason?: string) => {
     if (!user || !Number.isFinite(amount) || amount <= 0) return;
     const oldLevel = user.level;
@@ -119,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     void reason;
   };
 
-  return <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, quickDemoLogin, refreshUser, addXp }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, refreshUser, addXp }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth() {
