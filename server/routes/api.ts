@@ -5,6 +5,7 @@ import { dbService } from '../db/database.js';
 import { geminiService } from '../services/ai/gemini.service.js';
 import { parseAndInterpretCode } from '../services/simulation/code-interpreter.js';
 import { rateLimit } from '../middleware/security.js';
+import type { CodingChallenge } from '../../src/types/index.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
