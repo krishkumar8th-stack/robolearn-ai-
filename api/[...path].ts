@@ -20,7 +20,7 @@ function ensureDatabase() {
   return databaseInit;
 }
 
-app.use(async (_req, _res, next) => {
+app.use(async (req, _res, next) => {\n  if (req.path === '/health') return next();
   try {
     await ensureDatabase();
     next();
