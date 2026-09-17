@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { MonacoEditorPanel } from '../components/editor/MonacoEditorPanel';
 import { CourseLesson } from '../types/index';
 import { MEDIA } from '../assets/media';
+import { THREE_LEVEL_ROBOTICS } from '../data/threeLevelRobotics';
 
 export const LessonDetailPage: React.FC = () => {
   const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
@@ -36,10 +37,24 @@ export const LessonDetailPage: React.FC = () => {
       try {
         const data = await api.getLesson(courseId, lessonId);
         setLesson(data);
-        setIsCompleted(Boolean(user?.completedLessons?.includes(lessonId)));
       } catch (err) {
-        console.error(err);
+        const localCourse = THREE_LEVEL_ROBOTICS.find(c => c.id === courseId);
+        const localLesson = localCourse?.lessons.find(l => l.id === lessonId);
+
+        if (localLesson) {
+          const firstQuiz = Array.isArray(localLesson.quiz) ? localLesson.quiz[0] : localLesson.quiz;
+          setLesson({
+            ...localLesson,
+            content: localLesson.theory?.join('\\n\\n') || localLesson.summary || '',
+            starterCode: localLesson.codeSnippet || '',
+            xpReward: 50,
+            quiz: firstQuiz
+          } as CourseLesson);
+        } else {
+          console.error(err);
+        }
       } finally {
+        setIsCompleted(Boolean(user?.completedLessons?.includes(lessonId)));
         setIsLoading(false);
       }
     }
