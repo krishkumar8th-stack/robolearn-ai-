@@ -18,129 +18,114 @@ import {
 
 const PRESET_CODE_SNIPPETS: { [key: string]: { title: string; code: string; desc: string } } = {
   rover_avoidance: {
-    title: 'Autonomous Obstacle Avoidance Rover',
-    desc: 'Uses HC-SR04 sonar on servo turret to detect obstacles, brake, and turn away.',
-    code: `// Autonomous Obstacle Avoidance Robot (Arduino + Sonar + L298N)
-#include <Servo.h>
+    title: 'Obstacle Avoider',
+    desc: 'HC-SR04 + servo + L298N. Try changing the 20 cm threshold or turn time.',
+    code: `#include <Servo.h>
 
-const int trigPin = 11;
-const int echoPin = 12;
-const int ledStatusPin = 13;
-Servo sonarServo;
+const int trig = 11;
+const int echo = 12;
+const int led = 13;
+
+Servo head;
 
 void setup() {
   Serial.begin(9600);
-  pinMode(ledStatusPin, OUTPUT);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  
-  sonarServo.attach(9);
-  sonarServo.write(90); // Look straight ahead
-  Serial.println("RoboLearn Rover Autonomous Navigation Online.");
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
+  pinMode(led, OUTPUT);
+
+  head.attach(9);
+  head.write(90);
 }
 
 void loop() {
-  // Read distance from ultrasonic sonar
-  long distance = readSonarDistance();
-  Serial.print("Sonar Ping Distance: ");
-  Serial.print(distance);
-  Serial.println(" cm");
+  long cm = readDistance();
+  Serial.print("D: ");
+  Serial.println(cm);
 
-  if (distance < 20) {
-    // Obstacle detected! Apply emergency brakes and warn
-    digitalWrite(ledStatusPin, HIGH);
-    robotStop();
-    delay(500);
-
-    // Turn away from obstacle
-    robotTurnLeft();
-    delay(800);
-    
-    // Stop and resume
-    robotStop();
-    digitalWrite(ledStatusPin, LOW);
+  if (cm > 0 && cm < 20) {
+    digitalWrite(led, HIGH);
+    stopRobot();
+    delay(350);
+    turnLeft();
+    delay(650);
+    stopRobot();
+    digitalWrite(led, LOW);
   } else {
-    // Path clear - cruise forward
-    digitalWrite(ledStatusPin, LOW);
-    robotForward();
-    delay(1000);
+    forward();
+    delay(250);
   }
 }
 
-long readSonarDistance() {
-  digitalWrite(trigPin, LOW);
+long readDistance() {
+  digitalWrite(trig, LOW);
   delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
+  digitalWrite(trig, HIGH);
   delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-  
-  long duration = pulseIn(echoPin, HIGH);
-  long dist = duration * 0.034 / 2;
-  return (dist == 0) ? 18 : dist;
+  digitalWrite(trig, LOW);
+
+  long t = pulseIn(echo, HIGH, 30000);
+  return t ? (t * 0.0343) / 2 : 0;
 }
 
-void robotForward() {
-  // Motors forward
-  Serial.println("[ROVER] Moving forward at cruising speed");
+void forward() {
+  Serial.println("FWD");
 }
 
-void robotStop() {
-  Serial.println("[ROVER] Applying brakes - Halted");
+void stopRobot() {
+  Serial.println("STOP");
 }
 
-void robotTurnLeft() {
-  Serial.println("[ROVER] Steering 90 degrees Left to evade collision");
+void turnLeft() {
+  Serial.println("LEFT");
 }`
   },
+
   led_blink: {
-    title: 'Precision LED Blinker with Serial Telemetry',
-    desc: 'Configures digital pin 13 with current-limiting resistor and logs status.',
-    code: `// Precision LED Blink with Serial Telemetry
-const int ledPin = 13;
+    title: 'LED Blink',
+    desc: 'A small GPIO test on pin 13.',
+    code: `const int led = 13;
 
 void setup() {
+  pinMode(led, OUTPUT);
   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);
-  Serial.println("GPIO 13 configured as OUTPUT.");
 }
 
 void loop() {
-  digitalWrite(ledPin, HIGH);
-  Serial.println("[GPIO] Pin 13 HIGH (LED ON)");
-  delay(1000);
+  digitalWrite(led, HIGH);
+  Serial.println("ON");
+  delay(500);
 
-  digitalWrite(ledPin, LOW);
-  Serial.println("[GPIO] Pin 13 LOW (LED OFF)");
-  delay(1000);
+  digitalWrite(led, LOW);
+  Serial.println("OFF");
+  delay(500);
 }`
   },
-  servo_sweep: {
-    title: 'SG90 Micro Servo 180° Sweep',
-    desc: 'Sweeps micro servo horn back and forth between 0° and 180° smoothly.',
-    code: `// SG90 Servo Angular Position Control
-#include <Servo.h>
 
-Servo myServo;
+  servo_sweep: {
+    title: 'Servo Sweep',
+    desc: 'Move the SG90 through three positions.',
+    code: `#include <Servo.h>
+
+Servo servo;
 
 void setup() {
   Serial.begin(9600);
-  myServo.attach(9);
-  Serial.println("Servo attached to PWM Pin 9");
+  servo.attach(9);
 }
 
 void loop() {
-  // Sweep from 0 to 180 degrees
-  Serial.println("[SERVO] Moving to 0 degrees");
-  myServo.write(0);
-  delay(800);
+  servo.write(30);
+  Serial.println("30");
+  delay(700);
 
-  Serial.println("[SERVO] Moving to 90 degrees (Center)");
-  myServo.write(90);
-  delay(800);
+  servo.write(90);
+  Serial.println("90");
+  delay(700);
 
-  Serial.println("[SERVO] Moving to 180 degrees");
-  myServo.write(180);
-  delay(800);
+  servo.write(150);
+  Serial.println("150");
+  delay(700);
 }`
   }
 };
