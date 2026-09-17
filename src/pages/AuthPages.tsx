@@ -1,121 +1,105 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Bot, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Bot, Lock, Mail, Phone, AlertCircle, Eye, EyeOff, Loader2, KeyRound, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
+
+const inputClass = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 px-4 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100';
+const primaryButton = 'flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50';
 
 export const LoginPage: React.FC = () => {
-  const { login, isLoading } = useAuth();
+  const { login, loginWithOtp, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mode, setMode] = useState<'password' | 'otp'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendingOtp, setSendingOtp] = useState(false);
 
   const redirectAfterAuth = () => {
     const from = (location.state as { from?: string } | null)?.from;
     navigate(from && from !== '/login' && from !== '/register' ? from : '/dashboard', { replace: true });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
     setError(null);
-    try {
-      await login(email.trim(), password);
-      redirectAfterAuth();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your email and password.');
-    }
+    try { await login(email.trim(), password); redirectAfterAuth(); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Login failed. Please check your email and password.'); }
+  };
+
+  const sendLoginOtp = async () => {
+    setError(null);
+    setSendingOtp(true);
+    try { await api.sendOtp(phone, 'login'); setOtpSent(true); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Unable to send OTP.'); }
+    finally { setSendingOtp(false); }
+  };
+
+  const handleOtpLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+    setError(null);
+    try { await loginWithOtp(phone, code); redirectAfterAuth(); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : 'OTP verification failed.'); }
   };
 
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500">
-            <Bot className="h-6 w-6" />
-          </div>
-          <h2 className="text-2xl font-black">Welcome Back</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sign in with your RoboLearn AI account</p>
-        </div>
+        <div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500"><Bot className="h-6 w-6" /></div><h2 className="text-2xl font-black">Welcome Back</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sign in to your RoboLearn AI account</p></div>
+        <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-slate-950"><button type="button" onClick={() => { setMode('password'); setError(null); }} className={`rounded-lg py-2 text-xs font-bold ${mode === 'password' ? 'bg-white text-cyan-600 shadow dark:bg-slate-800' : 'text-slate-500'}`}>Email + Password</button><button type="button" onClick={() => { setMode('otp'); setError(null); }} className={`rounded-lg py-2 text-xs font-bold ${mode === 'otp' ? 'bg-white text-cyan-600 shadow dark:bg-slate-800' : 'text-slate-500'}`}>Mobile OTP</button></div>
+        {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div>}
 
-        {error && (
-          <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
+        {mode === 'password' ? (
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <div><label htmlFor="login-email" className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Email Address</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="login-email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className={`${inputClass} pl-10`} /></div></div>
+            <div><div className="mb-1 flex items-center justify-between"><label htmlFor="login-password" className="text-xs font-bold text-slate-500 dark:text-slate-400">Password</label><Link to="/forgot-password" className="text-xs font-bold text-cyan-500 hover:underline">Forgot password?</Link></div><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" className={`${inputClass} pl-10 pr-11`} /><button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
+            <button type="submit" disabled={isLoading || !email.trim() || !password} className={primaryButton}>{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign In'}</button>
+          </form>
+        ) : (
+          <form onSubmit={handleOtpLogin} className="space-y-4">
+            <div><label htmlFor="login-phone" className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Mobile Number</label><div className="relative"><Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="login-phone" type="tel" inputMode="numeric" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-digit mobile number" className={`${inputClass} pl-10 pr-24`} /><button type="button" onClick={sendLoginOtp} disabled={sendingOtp || phone.length !== 10} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-cyan-500 px-3 py-2 text-[11px] font-bold text-slate-950 disabled:opacity-50">{sendingOtp ? 'Sending…' : otpSent ? 'Resend OTP' : 'Send OTP'}</button></div></div>
+            {otpSent && <div><label htmlFor="login-otp" className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">OTP</label><input id="login-otp" required inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="Enter OTP" className={inputClass} /></div>}
+            <button type="submit" disabled={isLoading || !otpSent || !code} className={primaryButton}>{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</> : 'Verify & Sign In'}</button>
+            <p className="text-center text-[11px] text-slate-500">Your mobile number must already be linked to your RoboLearn account.</p>
+          </form>
         )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="login-email" className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input id="login-email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="login-password" className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input id="login-password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-11 text-xs outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-              <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" disabled={isLoading || !email.trim() || !password} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:from-cyan-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
-            {isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign In'}
-          </button>
-        </form>
-
         <p className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">Don't have an account? <Link to="/register" className="font-bold text-cyan-500 hover:underline">Create one</Link></p>
       </div>
     </div>
   );
 };
 
+export const ForgotPasswordPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const sendResetOtp = async () => { setError(null); setLoading(true); try { await api.sendOtp(phone, 'reset'); setOtpSent(true); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Unable to send OTP.'); } finally { setLoading(false); } };
+  const verifyOtp = async () => { setError(null); setLoading(true); try { const res = await api.verifyResetOtp(phone, code); setResetToken(res.resetToken); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Invalid OTP.'); } finally { setLoading(false); } };
+  const changePassword = async (e: React.FormEvent) => { e.preventDefault(); setError(null); if (password.length < 8) return setError('Password must be at least 8 characters long.'); if (password !== confirmPassword) return setError('Passwords do not match.'); setLoading(true); try { await api.resetPassword(resetToken, password); navigate('/login', { replace: true }); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Unable to reset password.'); } finally { setLoading(false); } };
+
+  return <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100"><div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"><button type="button" onClick={() => navigate('/login')} className="mb-5 flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-cyan-500"><ArrowLeft className="h-4 w-4" /> Back to login</button><div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500"><KeyRound className="h-6 w-6" /></div><h2 className="text-2xl font-black">Reset Password</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">We'll verify your mobile number with an OTP</p></div>{error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}{!resetToken ? <div className="space-y-4"><div><label className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">Mobile Number</label><div className="relative"><Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="10-digit mobile number" className={`${inputClass} pl-10 pr-24`} /><button type="button" onClick={sendResetOtp} disabled={loading || phone.length !== 10} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-cyan-500 px-3 py-2 text-[11px] font-bold text-slate-950 disabled:opacity-50">{loading ? 'Sending…' : otpSent ? 'Resend' : 'Send OTP'}</button></div></div>{otpSent && <div><label className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">OTP</label><input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="Enter OTP" className={inputClass} /><button type="button" onClick={verifyOtp} disabled={loading || !code} className={`${primaryButton} mt-3`}>{loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</> : 'Verify OTP'}</button></div>}</div> : <form onSubmit={changePassword} className="space-y-4"><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input required minLength={8} type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="New password (8+ characters)" className={`${inputClass} pl-10 pr-11`} /><button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><input required minLength={8} type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm new password" className={inputClass} /><button type="submit" disabled={loading} className={primaryButton}>{loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Change Password'}</button></form>}<p className="mt-6 text-center text-xs text-slate-500">Mobile OTP is required to reset your password.</p></div></div>;
+};
+
 export const RegisterPage: React.FC = () => {
   const { register, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [experienceLevel, setExperienceLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLoading) return;
-    setError(null);
-    try {
-      await register({ username: username.trim(), email: email.trim(), password, fullName: fullName.trim(), experienceLevel, preferredProgrammingLanguage: 'cpp' });
-      navigate('/dashboard', { replace: true });
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed.');
-    }
-  };
-
-  return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8">
-        <div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500"><Bot className="h-6 w-6" /></div><h2 className="text-2xl font-black">Create Maker Account</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Create a real RoboLearn AI account</p></div>
-        {error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input required autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full Name" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950" />
-          <input required minLength={3} pattern="[A-Za-z0-9_]+" autoComplete="username" value={username} onChange={e => setUsername(e.target.value.replace(/\s+/g, '_'))} placeholder="Username" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950" />
-          <input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Address" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950" />
-          <div className="relative"><input type={showPassword ? 'text' : 'password'} required minLength={8} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (8+ characters)" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-11 text-sm outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950" /><button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400" aria-label="Toggle password visibility">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
-          <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value as typeof experienceLevel)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select>
-          <button type="submit" disabled={isLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 text-sm font-bold text-slate-950 disabled:opacity-50">{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> : 'Create Account'}</button>
-        </form>
-        <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">Already have an account? <Link to="/login" className="font-bold text-cyan-500 hover:underline">Sign in</Link></p>
-      </div>
-    </div>
-  );
+  const [username, setUsername] = useState(''); const [email, setEmail] = useState(''); const [phone, setPhone] = useState(''); const [password, setPassword] = useState(''); const [fullName, setFullName] = useState(''); const [experienceLevel, setExperienceLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner'); const [showPassword, setShowPassword] = useState(false); const [error, setError] = useState<string | null>(null);
+  const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (isLoading) return; setError(null); try { await register({ username: username.trim(), email: email.trim(), phone: phone.trim(), password, fullName: fullName.trim(), experienceLevel, preferredProgrammingLanguage: 'cpp' }); navigate('/dashboard', { replace: true }); } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Registration failed.'); } };
+  return <div className="flex min-h-[80vh] flex-col items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-[#070b14] dark:text-slate-100"><div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"><div className="mb-6 text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-500"><Bot className="h-6 w-6" /></div><h2 className="text-2xl font-black">Create Maker Account</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Create a real RoboLearn AI account</p></div>{error && <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500 dark:text-rose-300"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div>}<form onSubmit={handleSubmit} className="space-y-4"><input required autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Full Name" className={inputClass} /><input required minLength={3} pattern="[A-Za-z0-9_]+" autoComplete="username" value={username} onChange={e => setUsername(e.target.value.replace(/\s+/g, '_'))} placeholder="Username" className={inputClass} /><input type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Address" className={inputClass} /><div className="relative"><Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="tel" inputMode="numeric" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="Mobile Number (for OTP login)" className={`${inputClass} pl-10`} /></div><div className="relative"><input type={showPassword ? 'text' : 'password'} required minLength={8} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (8+ characters)" className={`${inputClass} pr-11`} /><button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div><select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value as typeof experienceLevel)} className={inputClass}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select><button type="submit" disabled={isLoading} className={primaryButton}>{isLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating…</> : 'Create Account'}</button></form><p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">Already have an account? <Link to="/login" className="font-bold text-cyan-500 hover:underline">Sign in</Link></p></div></div>;
 };
