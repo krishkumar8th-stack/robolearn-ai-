@@ -16,13 +16,27 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const TOKEN_KEY = 'roblearn_token';
+
+function getToken() {
+  return typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+}
+
+function validateAuthResponse(response: { token?: unknown; user?: unknown }) {
+  if (!response || typeof response.token !== 'string' || !response.token.trim()) {
+    throw new Error('Login succeeded on the server, but no valid session token was returned. Please try again.');
+  }
+  if (!response.user || typeof response.user !== 'object') {
+    throw new Error('Login succeeded, but the server returned an invalid user response.');
+  }
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
-    const token = localStorage.getItem('roblearn_token');
+    const token = getToken();
     if (!token) {
       setUser(null);
       setIsLoading(false);
@@ -32,9 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res = await api.getMe();
+      if (!res?.user) throw new Error('Invalid session response.');
       setUser(res.user);
     } catch {
-      localStorage.removeItem('roblearn_token');
+      localStorage.removeItem(TOKEN_KEY);
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -48,9 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {
-      const res = await api.login(email, pass);
-      localStorage.setItem('roblearn_token', res.token);
-      setUser(res.user);
+      const res = await api.login(email.trim(), pass);
+      validateAuthResponse(res);
+      localStorage.setItem(TOKEN_KEY, res.token as string);
+      setUser(res.user as User);
+    } catch (error) {
+      localStorage.removeItem(TOKEN_KEY);
+      setUser(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -60,20 +80,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res = await api.register(data);
-      localStorage.setItem('roblearn_token', res.token);
-      setUser(res.user);
+      validateAuthResponse(res);
+      localStorage.setItem(TOKEN_KEY, res.token as string);
+      setUser(res.user as User);
+    } catch (error) {
+      localStorage.removeItem(TOKEN_KEY);
+      setUser(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('roblearn_token');
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   };
 
   const updateProfile = async (data: Partial<User>) => {
     const res = await api.updateProfile(data);
+    if (!res?.user) throw new Error('Profile update returned an invalid response.');
     setUser(res.user);
   };
 
@@ -87,22 +113,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newXp = user.xp + amount;
     const newLevel = Math.floor(newXp / 200) + 1;
     setUser(prev => prev ? { ...prev, xp: newXp, level: newLevel } : null);
-
     if (newLevel > oldLevel) {
-      try {
-        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      } catch {
-        // Optional visual effect; progress remains updated.
-      }
+      try { confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } }); } catch { /* visual only */ }
     }
     void reason;
   };
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, quickDemoLogin, refreshUser, addXp }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, quickDemoLogin, refreshUser, addXp }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth() {
