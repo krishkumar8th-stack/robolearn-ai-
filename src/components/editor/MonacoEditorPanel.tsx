@@ -108,7 +108,7 @@ void loop() {
       setAiExplanation(res);
     } catch (err: any) {
       setAiExplanation({
-        summary: 'Could not connect to AI service. Please verify server connection.',
+        summary: `AI explanation unavailable: ${err?.message || 'the AI service could not be reached'}`,
         lineByLine: [],
         concepts: []
       });
@@ -125,13 +125,13 @@ void loop() {
       setAiDebugResult(res);
     } catch (err: any) {
       setAiDebugResult({
-        problem: 'Debugging service temporarily unreachable',
-        cause: 'Network or API key configuration',
-        solution: 'Check pin mappings and semicolons',
+        problem: 'AI debugger is unavailable',
+        cause: err?.message || 'The AI service could not be reached.',
+        solution: 'Reconnect the AI service and run the debugger again.',
         correctedCode: code,
-        explanation: 'Ensure Arduino setup() and loop() are present.',
+        explanation: 'No code change was generated because the AI service did not return a verified result.',
         confidence: 'Low',
-        preventionTips: ['Verify pin numbers match physical headers']
+        preventionTips: ['Check the API service status before applying an AI-generated fix.']
       });
     } finally {
       setIsAiLoading(false);
@@ -149,8 +149,8 @@ void loop() {
         1
       );
       setAiHintText(res.hint);
-    } catch {
-      setAiHintText('Check your digital pin configurations and timing delays.');
+    } catch (err: any) {
+      setAiHintText(`AI hint unavailable: ${err?.message || 'the AI service could not be reached'}`);
     } finally {
       setIsAiLoading(false);
     }
