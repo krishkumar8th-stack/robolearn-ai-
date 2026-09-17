@@ -9,9 +9,7 @@ const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID?.trim();
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN?.trim();
 const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
 
-function usersCollection() {
-  return mongoose.connection.db?.collection<any>('roblearn_users');
-}
+function usersCollection() { return mongoose.connection.db?.collection<any>('roblearn_users'); }
 
 export function normalizeIndianPhone(value: unknown): string {
   const raw = typeof value === 'string' ? value.trim() : '';
@@ -21,9 +19,7 @@ export function normalizeIndianPhone(value: unknown): string {
   return '';
 }
 
-export function otpProviderConfigured() {
-  return Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_VERIFY_SERVICE_SID);
-}
+export function otpProviderConfigured() { return Boolean(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_VERIFY_SERVICE_SID); }
 
 async function ensurePhoneIndex() {
   const collection = usersCollection();
@@ -61,29 +57,28 @@ export async function updatePassword(userId: string, password: string) {
 async function twilioVerify(path: 'Verifications' | 'VerificationCheck', body: URLSearchParams) {
   if (!otpProviderConfigured()) throw new Error('Mobile OTP is not configured on the server. Add the Twilio Verify environment variables in Vercel.');
   const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-  const response = await fetch(`https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  });
+  const response = await fetch(`https://verify.twilio.com/v2/Services/${TWILIO_VERIFY_SERVICE_SID}/${path}`, { method: 'POST', headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(typeof payload?.message === 'string' ? payload.message : 'Unable to send or verify OTP. Please try again.');
-  }
+  if (!response.ok) throw new Error(typeof payload?.message === 'string' ? payload.message : 'Unable to send or verify OTP. Please try again.');
   return payload;
 }
 
-export async function sendOtp(phone: string) {
-  const body = new URLSearchParams({ To: phone, Channel: 'sms' });
-  return twilioVerify('Verifications', body);
-}
-
-export async function checkOtp(phone: string, code: string) {
-  const body = new URLSearchParams({ To: phone, Code: code });
-  return twilioVerify('VerificationCheck', body);
-}
+export async function sendOtp(phone: string) { return twilioVerify('Verifications', new URLSearchParams({ To: phone, Channel: 'sms' })); }
+export async function checkOtp(phone: string, code: string) { return twilioVerify('VerificationCheck', new URLSearchParams({ To: phone, Code: code })); }
 
 export function createSession(user: User) {
   if (!JWT_SECRET) throw new Error('Authentication is not configured on the server.');
   return jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+export function createRegistrationVerificationToken(phone: string) {
+  if (!JWT_SECRET) throw new Error('Authentication is not configured on the server.');
+  return jwt.sign({ phone, purpose: 'registration-phone' }, JWT_SECRET, { expiresIn: '10m' });
+}
+
+export function verifyRegistrationVerificationToken(token: string, phone: string) {
+  if (!JWT_SECRET) throw new Error('Authentication is not configured on the server.');
+  const decoded = jwt.verify(token, JWT_SECRET) as { phone?: string; purpose?: string };
+  if (decoded.purpose !== 'registration-phone' || decoded.phone !== phone) throw new Error('Mobile verification does not match this number.');
+  return true;
 }
