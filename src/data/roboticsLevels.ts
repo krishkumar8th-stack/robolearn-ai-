@@ -1,0 +1,72 @@
+import { Course } from '../types/index.js';
+
+const lesson = (courseId: string, level: number, id: string, title: string, summary: string, objective: string, theory: string[], codeSnippet: string, challengeTitle: string, challengePrompt: string): Course['lessons'][number] => ({
+  id, courseId, level, title, summary, durationMinutes: 20, learningObjective: objective, theory,
+  diagramDescription: `${title} concept diagram showing the robot hardware, signals, and control flow.`,
+  codeSnippet, programmingLanguage: 'cpp',
+  quiz: [{ question: `What is the main purpose of ${title.toLowerCase()}?`, options: ['To understand and control a robotics system', 'To format a web page', 'To edit an image', 'To compress a video'], correctIndex: 0, explanation: 'Robotics concepts connect software decisions with physical hardware.' }],
+  challenge: { title: challengeTitle, prompt: challengePrompt, starterCode: codeSnippet, expectedResult: 'A working robotics control routine', hint: 'Break the problem into small hardware and software steps.' }
+});
+
+export const MISSING_ROBOTICS_LEVELS: Course[] = [
+  {
+    id: 'level-2-electronics', level: 2, title: 'Level 2: Electronics & Circuit Foundations', iconName: 'Zap', imageUrl: '/assets/images/breadboard.jpg',
+    tagline: 'Build a solid electronics foundation before connecting motors and sensors.',
+    description: 'Learn voltage, current, resistance, Ohm’s law, breadboards, LEDs, pull-up resistors, and safe power distribution.',
+    lessons: [
+      lesson('level-2-electronics',2,'l2-ohms-law','Voltage, Current & Ohm’s Law','Understand the electrical quantities behind every robot circuit.','Use V = I × R to calculate current, resistance, and voltage safely.',['Voltage is electrical potential difference. Current is charge flow. Resistance limits current.','Ohm’s law connects them: V = I × R. Power is P = V × I.','Always check the voltage and current limits of a component before connecting it.'],'float current = 0.02;\nfloat resistance = 220;\nfloat voltage = current * resistance;','Ohm’s Law Calculator','Calculate the resistor needed for an LED using a 5V supply and a 2V LED at 15mA.'),
+      lesson('level-2-electronics',2,'l2-breadboard','Breadboards & Circuit Wiring','Learn how breadboard rows, rails, ground, and common connections work.','Build clean, readable low-voltage prototype circuits.',['Breadboard rails distribute power and ground.','Components in the same connected row share an electrical node.','A common ground is essential when multiple modules communicate.'],'// Example wiring plan\n// Arduino GND -> breadboard GND rail\n// Arduino 5V  -> breadboard + rail','Build a Safe LED Circuit','Wire an LED through a current-limiting resistor and explain each connection.'),
+      lesson('level-2-electronics',2,'l2-transistors-power','Transistors, Drivers & Power Safety','Understand why motors cannot normally be powered directly from GPIO pins.','Choose a driver stage and separate logic power from motor power.',['GPIO pins provide control signals, not high motor current.','Transistors and H-bridges switch larger loads using a small control signal.','Motor supplies need suitable voltage, current capacity, grounding, and protection.'],'const int motorEnable = 5;\nanalogWrite(motorEnable, 180);','Motor Driver Safety Check','Design a circuit where Arduino GPIO controls a motor driver while the motor uses a separate supply.')
+    ]
+  },
+  {
+    id: 'level-5-motors', level: 5, title: 'Level 5: Motors, Servos & Motion Control', iconName: 'Cog', imageUrl: '/assets/images/rover.jpg',
+    tagline: 'Turn electrical signals into controlled mechanical motion.',
+    description: 'Master DC motors, H-bridges, PWM speed control, servos, direction control, and basic differential drive.',
+    lessons: [
+      lesson('level-5-motors',5,'l5-dc-motor','DC Motors & H-Bridge Control','Learn how a motor driver controls direction and speed.','Drive a DC motor forward, backward, stop, and at variable PWM speed.',['A DC motor converts electrical energy into rotation.','An H-bridge reverses motor polarity to change direction.','PWM changes average motor power and therefore practical speed.'],'const int in1=4, in2=5, en=6;\nvoid forward(int speed){ digitalWrite(in1,HIGH); digitalWrite(in2,LOW); analogWrite(en,speed); }','Motor Speed Controller','Create functions for forward, reverse, stop, and variable motor speed.'),
+      lesson('level-5-motors',5,'l5-servo','Servo Position Control','Control a servo by commanding a target angle.','Use the Servo library to position a sensor turret or robotic arm joint.',['A hobby servo contains a motor, gears, position sensing, and a controller.','The command represents a target angle rather than continuous speed.','Use a suitable external supply for multiple servos and share ground with the controller.'],'#include <Servo.h>\nServo arm;\nvoid setup(){ arm.attach(9); arm.write(90); }','Servo Scanner','Sweep a servo from 30° to 150° and return it to center.'),
+      lesson('level-5-motors',5,'l5-differential-drive','Differential Drive & Turning','Combine left and right wheel motion to steer a rover.','Implement forward, reverse, pivot-left, pivot-right, and stop behaviors.',['A two-wheel differential drive robot turns by changing the relative wheel speeds.','For a pivot turn, wheels can rotate in opposite directions.','Real robots require calibration because motors rarely have identical speed.'],'void turnLeft(){\n  leftMotor(-160); rightMotor(160);\n}','Rover Motion Controller','Implement reusable motion functions for a two-wheel autonomous rover.')
+    ]
+  },
+  {
+    id: 'level-6-embedded-systems', level: 6, title: 'Level 6: Embedded Systems & Real-Time Control', iconName: 'Cpu', imageUrl: '/assets/images/arduino_uno.jpg',
+    tagline: 'Write responsive embedded programs that keep sensors and actuators working together.',
+    description: 'Learn millis-based timing, interrupts, state machines, serial debugging, memory awareness, and reliable control loops.',
+    lessons: [
+      lesson('level-6-embedded-systems',6,'l6-nonblocking','Non-Blocking Timing with millis','Replace long delays with responsive timing logic.','Run multiple robot tasks without freezing sensor or motor control.',['delay() blocks the main loop.','millis() allows scheduled work while the loop continues running.','Non-blocking code is important when a robot must react quickly to sensors.'],'unsigned long lastRead=0;\nif(millis()-lastRead>=100){ lastRead=millis(); readSensor(); }','Responsive Sensor Loop','Blink an LED and read a sensor on different schedules without using delay().'),
+      lesson('level-6-embedded-systems',6,'l6-state-machine','Finite State Machines','Represent robot behavior as clear states and transitions.','Build predictable autonomous behavior using IDLE, DRIVE, AVOID, and RECOVER states.',['A state machine separates behavior into named modes.','Sensor events trigger transitions.','Explicit states make complex robot logic easier to debug.'],'enum State {IDLE, DRIVE, AVOID};\nState state = IDLE;\n\nvoid updateRobot(){\n  switch(state){ case DRIVE: /* drive */ break; case AVOID: /* turn */ break; default: break; }\n}','Robot State Machine','Create states for driving, obstacle avoidance, and recovery.'),
+      lesson('level-6-embedded-systems',6,'l6-debugging','Serial Debugging & Reliability','Use telemetry to diagnose hardware and software behavior.','Log sensor readings, states, and timing information through Serial.',['Serial output helps reveal what the robot thinks is happening.','Log meaningful values instead of flooding the serial port.','Test one subsystem at a time before integrating the full robot.'],'Serial.begin(115200);\nSerial.print("distance=");\nSerial.println(distanceCm);','Robot Telemetry Logger','Print distance, motor state, and current behavior at a controlled rate.')
+    ]
+  },
+  {
+    id: 'level-7-communication', level: 7, title: 'Level 7: Robot Communication & IoT', iconName: 'Radio', imageUrl: '/assets/images/esp32.jpg',
+    tagline: 'Connect robots to phones, computers, and other robots.',
+    description: 'Learn UART, I2C, Bluetooth, Wi-Fi, telemetry, command protocols, and basic multi-device robotics.',
+    lessons: [
+      lesson('level-7-communication',7,'l7-i2c','I2C Sensors & Bus Communication','Connect multiple digital sensors over SDA and SCL.','Read an I2C sensor and understand device addresses.',['I2C uses SDA for data and SCL for clock.','Multiple devices can share the same bus when addresses differ.','Keep wiring short and use appropriate pull-up resistors.'],'#include <Wire.h>\nvoid setup(){ Wire.begin(); }','I2C Sensor Scanner','Create an I2C scanner that reports responding device addresses.'),
+      lesson('level-7-communication',7,'l7-wireless','Bluetooth & Wi-Fi Robot Commands','Send movement commands wirelessly to a robot.','Design a simple command protocol such as F, B, L, R, and S.',['Wireless commands should be small, validated, and fail safely.','ESP32 provides integrated Wi-Fi and Bluetooth connectivity.','A robot should stop if communication is lost or a command is invalid.'],'if(command=="F") forward();\nelse if(command=="S") stopMotors();','Wireless Rover Control','Build a command handler that safely controls a rover from a wireless client.'),
+      lesson('level-7-communication',7,'l7-telemetry','Telemetry & Remote Monitoring','Send sensor and battery data to a dashboard.','Create a periodic telemetry packet containing useful robot state.',['Telemetry turns a robot into an observable system.','Include timestamps or sequence numbers when data freshness matters.','Never allow telemetry failure to block safety-critical control.'],'String packet = "D=" + String(distance) + ";B=" + String(battery);\nSerial.println(packet);','Telemetry Packet','Design a compact status message containing distance, battery, and robot state.')
+    ]
+  },
+  {
+    id: 'level-8-computer-vision', level: 8, title: 'Level 8: Computer Vision & Robot AI', iconName: 'Eye', imageUrl: '/assets/images/rover.jpg',
+    tagline: 'Give robots visual perception and intelligent decisions.',
+    description: 'Explore cameras, image processing, object detection, coordinate systems, and AI-assisted robot perception.',
+    lessons: [
+      lesson('level-8-computer-vision',8,'l8-camera','Cameras & Image Basics','Understand pixels, frames, resolution, and camera placement for robotics.','Choose useful image regions and interpret camera measurements.',['An image is a grid of pixels with color or intensity values.','Resolution affects detail, bandwidth, and processing cost.','Camera mounting and lighting can matter as much as the algorithm.'],'// Pseudocode\nframe = camera.read();\nroi = frame.crop(centerRegion);','Camera Inspection','Define a region of interest for detecting a colored object.'),
+      lesson('level-8-computer-vision',8,'l8-line-vision','Vision-Based Line Following','Use image features to estimate where a line lies relative to the robot.','Convert visual error into steering commands.',['A line follower can estimate line position from image pixels.','The difference between desired and observed line position is a control error.','Smoothing and confidence checks reduce noisy steering.'],'error = targetX - lineCenterX;\nturn = constrain(error * gain, -255, 255);','Vision Line Follower','Calculate a steering value from the detected line center.'),
+      lesson('level-8-computer-vision',8,'l8-object-detection','Object Detection for Robotics','Understand how AI models locate objects in camera frames.','Use detection results as inputs to a robot decision system.',['Object detectors produce labels and locations with confidence values.','A robot should apply confidence thresholds and safe fallback behavior.','AI perception is one subsystem; motion control still needs deterministic safety limits.'],'if(confidence > 0.75 && label == "person"){ stopRobot(); }','Safe Object Response','Stop the robot when a target class is detected above a chosen confidence threshold.')
+    ]
+  },
+  {
+    id: 'level-10-robotics-capstone', level: 10, title: 'Level 10: Robotics Engineering Capstone', iconName: 'Trophy', imageUrl: '/assets/images/rover.jpg',
+    tagline: 'Design, integrate, test, and document a complete autonomous robot.',
+    description: 'Bring programming, electronics, sensing, motion, communication, and AI together into an engineering project.',
+    lessons: [
+      lesson('level-10-robotics-capstone',10,'l10-system-design','Robot System Architecture','Plan a complete robot before building it.','Create a block diagram covering power, compute, sensors, actuators, and communication.',['A system architecture identifies interfaces and dependencies.','Separate high-current power paths from logic and sensor wiring.','Choose hardware based on requirements rather than convenience.'],'// Architecture\nSensors -> Controller -> Planner -> Motor Driver -> Motors\nBattery -> Power Regulation -> Controller','System Design Review','Create a block-level architecture for an autonomous rover and list its interfaces.'),
+      lesson('level-10-robotics-capstone',10,'l10-integration','Hardware-Software Integration','Integrate subsystems one at a time and verify assumptions.','Build an integration checklist and test sensor, motor, and navigation subsystems independently.',['Integration exposes timing, power, grounding, and interface problems.','Use staged tests: bench test, low-speed test, obstacle test, then full autonomy.','Keep emergency stop and safe motor limits available during testing.'],'bool safeToMove = distanceCm > 25 && batteryVoltage > 7.0;\nif(safeToMove) forward(); else stopMotors();','Integration Test Plan','Write a safe sequence for testing sensors, motors, and autonomous navigation.'),
+      lesson('level-10-robotics-capstone',10,'l10-capstone','Autonomous Robot Capstone','Complete an end-to-end autonomous robotics mission.','Combine perception, planning, control, telemetry, and safety into one project.',['A robust robot closes the loop: sense, decide, act, and verify.','Use logs and repeatable tests to measure performance.','Document wiring, software, calibration values, limitations, and future improvements.'],'void loop(){\n  sense();\n  plan();\n  control();\n  telemetry();\n  safetyCheck();\n}','Final Autonomous Rover','Build a rover that detects obstacles, chooses a safe direction, drives, and reports telemetry.')
+    ]
+  }
+];
