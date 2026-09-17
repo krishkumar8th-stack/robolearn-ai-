@@ -122,7 +122,7 @@ let isMongoConnected = false;
 function usersCollection() {
   // The Mongo driver can infer an ObjectId/string _id shape that conflicts with
   // our app's string ids. Keep this collection boundary intentionally flexible.
-  return mongoose.connection.db?.collection('roblearn_users');
+  return mongoose.connection.db?.collection<any>('roblearn_users');
 }
 
 export async function initDatabase() {
