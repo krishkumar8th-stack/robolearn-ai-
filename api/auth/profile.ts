@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { dbService, initDatabase } from '../../server/db/database.js';
+import { normalizeIndianPhone, setUserPhone } from '../../server/services/otp.js';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
 
@@ -20,13 +21,26 @@ export default async function handler(req: any, res: any) {
     await initDatabase();
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized. Please sign in again.' });
-    const updated = await dbService.updateUserProgress(userId, {
-      fullName: typeof req.body?.fullName === 'string' ? req.body.fullName.trim().slice(0, 120) : undefined,
-      experienceLevel: req.body?.experienceLevel,
-      preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage,
-      preferredLanguage: req.body?.preferredLanguage
-    });
+
+    const updates: any = {};
+    if (typeof req.body?.fullName === 'string') updates.fullName = req.body.fullName.trim().slice(0, 120);
+    if (req.body?.experienceLevel !== undefined) updates.experienceLevel = req.body.experienceLevel;
+    if (req.body?.preferredProgrammingLanguage !== undefined) updates.preferredProgrammingLanguage = req.body.preferredProgrammingLanguage;
+    if (req.body?.preferredLanguage !== undefined) updates.preferredLanguage = req.body.preferredLanguage;
+
+    let updated = await dbService.updateUserProgress(userId, updates);
     if (!updated) return res.status(404).json({ error: 'User not found.' });
+
+    if (req.body?.phone !== undefined) {
+      const phone = normalizeIndianPhone(req.body.phone);
+      if (!phone) return res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.' });
+      try {
+        updated = (await setUserPhone(userId, phone)) || updated;
+      } catch (error: any) {
+        return res.status(409).json({ error: error?.message || 'Unable to link this mobile number.' });
+      }
+    }
+
     const { passwordHash, ...userWithoutPassword } = updated;
     void passwordHash;
     return res.status(200).json({ user: userWithoutPassword });
