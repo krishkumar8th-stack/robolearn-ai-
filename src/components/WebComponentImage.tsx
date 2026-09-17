@@ -46,17 +46,26 @@ const significantTokens = (value: string) => clean(value)
   .split(' ')
   .filter((token) => token.length >= 3 && !['the', 'for', 'and', 'with', 'module', 'board'].includes(token));
 
-function scoreTitle(name: string, title: string) {
-  const query = clean(name);
+function scoreTitle(queryName: string, title: string) {
+  const query = clean(queryName);
   const candidate = clean(title);
   if (!query || !candidate) return 0;
   if (candidate === query) return 100;
   let score = 0;
-  if (candidate.includes(query)) score += 60;
-  const tokens = significantTokens(name);
+  if (candidate.includes(query)) score += 70;
+  const tokens = significantTokens(queryName);
   const matches = tokens.filter((token) => candidate.includes(token)).length;
-  score += tokens.length ? (matches / tokens.length) * 40 : 0;
+  score += tokens.length ? (matches / tokens.length) * 30 : 0;
   return score;
+}
+
+function scoreSearchResult(queryName: string, title: string, requestedName: string) {
+  const titleScore = scoreTitle(queryName, title);
+  const requestedTokens = significantTokens(requestedName);
+  const candidate = clean(title);
+  const identityMatches = requestedTokens.filter((token) => candidate.includes(token)).length;
+  const identityCoverage = requestedTokens.length ? identityMatches / requestedTokens.length : 0;
+  return titleScore * 0.7 + identityCoverage * 30;
 }
 
 async function searchOpenverse(name: string): Promise<ImageState | null> {
@@ -71,11 +80,15 @@ async function searchOpenverse(name: string): Promise<ImageState | null> {
       const results = Array.isArray(payload?.results) ? payload.results : [];
       const best = results
         .filter((item: any) => typeof item?.thumbnail === 'string' || typeof item?.url === 'string')
-        .map((item: any) => ({ item, score: scoreTitle(name, String(item?.title || '')) }))
+        .map((item: any) => {
+          const title = String(item?.title || '');
+          const score = Math.max(...queries.map((query) => scoreSearchResult(query, title, name)), 0);
+          return { item, score };
+        })
         .sort((a: any, b: any) => b.score - a.score)[0];
-      if (best && best.score >= 28) {
+      if (best && best.score >= 68) {
         const url = best.item.thumbnail || best.item.url;
-        if (typeof url === 'string' && url.startsWith('http')) {
+        if (typeof url === 'string' && url.startsWith('http') && best && best.score >= 68) {
           return {
             url,
             sourceUrl: best.item.foreign_landing_url || best.item.detail_url || url,
@@ -104,8 +117,13 @@ async function searchWikimedia(name: string): Promise<ImageState | null> {
       const payload = await response.json();
       const pages = Object.values(payload?.query?.pages || {}) as Array<any>;
       const best = pages
-        .map((page) => ({ page, score: scoreTitle(name, String(page?.title || '')) }))
+        .map((page) => {
+          const title = String(page?.title || '');
+          const score = Math.max(...queries.map((query) => scoreSearchResult(query, title, name)), 0);
+          return { page, score };
+        })
         .filter(({ page }) => String(page?.imageinfo?.[0]?.mime || '').startsWith('image/'))
+        .filter(({ score }) => score >= 68)
         .sort((a, b) => b.score - a.score)[0];
       const image = best?.page?.imageinfo?.[0];
       const url = image?.thumburl || image?.url;
