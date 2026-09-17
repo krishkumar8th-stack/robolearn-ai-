@@ -7,7 +7,12 @@ import { parseAndInterpretCode } from '../services/simulation/code-interpreter.j
 import { rateLimit } from '../middleware/security.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'roblearn-dev-fallback-secret';
+const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
+
+function requireJwtSecret() {
+  if (!JWT_SECRET) throw new Error('JWT_SECRET is required in production. Configure the server secret before accepting authentication requests.');
+  return JWT_SECRET;
+}
 
 // Express 4 does not automatically forward rejected async handlers. Wrap every
 // route handler once so unexpected backend/API errors reach the JSON error handler.
@@ -32,7 +37,7 @@ function authenticateUser(req: Request): string | null {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7).trim();
-  if (!token) return null;
+  if (!token || !JWT_SECRET) return null;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id?: string };
     return typeof decoded.id === 'string' && decoded.id ? decoded.id : null;
@@ -58,14 +63,14 @@ router.get('/health', async (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     ai: ai.status,
     aiModel: ai.model,
-    database: 'initialized'
+    database: 'connected'
   });
 });
 
 // ---------------- AUTHENTICATION ----------------
 router.post('/auth/register', authLimiter, async (req: Request, res: Response) => {
   const fullName = normalizeText(req.body?.fullName, 120);
-  const username = normalizeText(req.body?.username, 40);
+  const username = normalizeText(req.body?.username, 40).toLowerCase();
   const email = normalizeText(req.body?.email, 160).toLowerCase();
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   if (!email || !password || !fullName || !username) {
@@ -75,8 +80,10 @@ router.post('/auth/register', authLimiter, async (req: Request, res: Response) =
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
   if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
 
-  const existing = await dbService.findUserByEmail(email);
-  if (existing) return res.status(409).json({ error: 'An account with this email address already exists.' });
+  const existingEmail = await dbService.findUserByEmail(email);
+  if (existingEmail) return res.status(409).json({ error: 'An account with this email address already exists.' });
+  const existingUsername = await dbService.findUserByUsername(username);
+  if (existingUsername) return res.status(409).json({ error: 'That username is already taken.' });
 
   try {
     const newUser = await dbService.createUser({
@@ -90,11 +97,14 @@ router.post('/auth/register', authLimiter, async (req: Request, res: Response) =
       lastActiveDate: new Date().toISOString(),
       password
     });
-    const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, requireJwtSecret(), { expiresIn: '7d' });
     const { passwordHash, ...userWithoutPassword } = newUser;
     return res.status(201).json({ token, user: userWithoutPassword });
   } catch (err: any) {
-    if (err?.code === 11000) return res.status(409).json({ error: 'An account with this email address already exists.' });
+    if (err?.code === 11000) {
+      const key = Object.keys(err?.keyPattern || {})[0];
+      return res.status(409).json({ error: key === 'username' ? 'That username is already taken.' : 'An account with this email address already exists.' });
+    }
     throw err;
   }
 });
@@ -109,7 +119,7 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response) => {
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) return res.status(401).json({ error: 'Invalid email or password.' });
 
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, requireJwtSecret(), { expiresIn: '7d' });
   const { passwordHash, ...userWithoutPassword } = user;
   return res.json({ token, user: userWithoutPassword });
 });
