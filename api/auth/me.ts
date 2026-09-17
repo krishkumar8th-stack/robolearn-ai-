@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { dbService } from '../../server/db/database.js';
+import { dbService, initDatabase } from '../../server/db/database.js';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
 
@@ -17,6 +17,7 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
   try {
+    await initDatabase();
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized. Please sign in again.' });
     const user = await dbService.findUserById(userId);
