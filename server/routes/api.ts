@@ -207,6 +207,35 @@ router.post('/progress/complete-lesson', async (req: Request, res: Response) => 
   return res.json({ success: true, xpEarned: xpGain, user: updated });
 });
 
+function validateChallenge(challenge: CodingChallenge, code: string) {
+  const clearRun = parseAndInterpretCode(code, challenge.programmingLanguage, 42);
+  const nearRun = parseAndInterpretCode(code, challenge.programmingLanguage, 15);
+  const has = (actions: any[], type: string, predicate?: (action: any) => boolean) =>
+    actions.some(action => action.type === type && (!predicate || predicate(action)));
+
+  if (challenge.id === 'ch-1-led-on') {
+    return has(clearRun.actions, 'LED_SET', a => String(a.pin) === '13' && a.state === 'ON');
+  }
+
+  if (challenge.id === 'ch-2-led-blink') {
+    const ledActions = clearRun.actions.filter(a => a.type === 'LED_SET' && String(a.pin) === '13');
+    const hasOn = ledActions.some(a => a.state === 'ON');
+    const hasOff = ledActions.some(a => a.state === 'OFF');
+    const hasOneSecondTiming = ledActions.some(a => Number(a.delayMs || a.duration) >= 1000);
+    return hasOn && hasOff && hasOneSecondTiming;
+  }
+
+  if (challenge.id === 'ch-3-obstacle-avoidance') {
+    const clearForward = has(clearRun.actions, 'ROBOT_MOVE', a => a.direction === 'FORWARD');
+    const nearStop = has(nearRun.actions, 'ROBOT_STOP');
+    const nearTurn = has(nearRun.actions, 'ROBOT_TURN', a => a.direction === 'LEFT' && Number(a.angle || 0) === 90);
+    const nearSonar = has(nearRun.actions, 'ULTRASONIC_PING');
+    return clearForward && nearSonar && nearStop && nearTurn;
+  }
+
+  return clearRun.success;
+}
+
 // ---------------- CHALLENGES ----------------
 router.get('/challenges', async (req: Request, res: Response) => res.json(await dbService.getChallenges(normalizeText(req.query.difficulty, 30) || undefined)));
 router.get('/challenges/:id', async (req: Request, res: Response) => {
@@ -218,7 +247,8 @@ router.post('/challenges/:id/submit', async (req: Request, res: Response) => {
   const challenge = await dbService.getChallengeById(normalizeText(req.params.id, 120));
   if (!challenge) return res.status(404).json({ error: 'Challenge not found.' });
   const code = typeof req.body?.code === 'string' ? req.body.code.slice(0, 100_000) : '';
-  const interpretation = parseAndInterpretCode(code);
+  const interpretation = parseAndInterpretCode(code, challenge.programmingLanguage, 42);
+  const passed = validateChallenge(challenge, code);
   const userId = authenticateUser(req);
   let user = null;
   let xpEarned = 0;
@@ -226,14 +256,14 @@ router.post('/challenges/:id/submit', async (req: Request, res: Response) => {
     const existingUser = await dbService.findUserById(userId);
     if (existingUser) {
       const completed = new Set(existingUser.completedChallenges || []);
-      if (!completed.has(challenge.id) && interpretation.success) {
+      if (!completed.has(challenge.id) && passed) {
         completed.add(challenge.id);
         xpEarned = challenge.xpReward;
         user = await dbService.updateUserProgress(userId, { completedChallenges: Array.from(completed), xp: existingUser.xp + xpEarned });
       } else user = existingUser;
     }
   }
-  return res.json({ success: interpretation.success, supported: interpretation.supported, message: interpretation.message, actions: interpretation.actions, logs: interpretation.logs, xpEarned, user });
+  return res.json({ success: passed, supported: interpretation.supported, message: passed ? 'All challenge checks passed.' : 'The submitted code did not satisfy all required challenge checks.', actions: interpretation.actions, logs: interpretation.logs, xpEarned, user });
 });
 
 // ---------------- PROJECTS ----------------
