@@ -11,11 +11,6 @@ const encodePath = (value: string) => encodeURIComponent(value);
 export const api = {
   async register(data: any): Promise<{ token: string; user: User }> { return request('/auth/register', { method: 'POST', body: JSON.stringify(data) }); },
   async login(email: string, password: string): Promise<{ token: string; user: User }> { return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); },
-  async loginWithOtp(phone: string, code: string): Promise<{ token: string; user: User }> { return request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code, purpose: 'login' }) }); },
-  async sendOtp(phone: string, purpose: 'login' | 'reset' | 'register'): Promise<{ success: boolean; message: string }> { return request('/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone, purpose }) }); },
-  async verifyResetOtp(phone: string, code: string): Promise<{ success: boolean; resetToken: string }> { return request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code, purpose: 'reset' }) }); },
-  async verifyRegistrationOtp(phone: string, code: string): Promise<{ success: boolean; registrationToken: string }> { return request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code, purpose: 'register' }) }); },
-  async resetPassword(resetToken: string, password: string): Promise<{ success: boolean; message: string }> { return request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ resetToken, password }) }); },
   async getMe(): Promise<{ user: User }> { return request('/auth/me'); },
   async updateProfile(data: Partial<User>): Promise<{ user: User }> { return request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
   async getComponents(category?: string, difficulty?: string, search?: string): Promise<ElectronicComponent[]> { const params = new URLSearchParams(); if (category) params.set('category', category); if (difficulty) params.set('difficulty', difficulty); if (search) params.set('search', search); const query = params.toString(); return request<ElectronicComponent[]>(`/components${query ? `?${query}` : ''}`); },
