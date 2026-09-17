@@ -56,18 +56,14 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = REQU
 const encodePath = (value: string) => encodeURIComponent(value);
 
 export const api = {
-  async register(data: any): Promise<{ token: string; user: User }> {
-    return request('/auth/register', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
-    return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-  },
-  async getMe(): Promise<{ user: User }> {
-    return request('/auth/me');
-  },
-  async updateProfile(data: Partial<User>): Promise<{ user: User }> {
-    return request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) });
-  },
+  async register(data: any): Promise<{ token: string; user: User }> { return request('/auth/register', { method: 'POST', body: JSON.stringify(data) }); },
+  async login(email: string, password: string): Promise<{ token: string; user: User }> { return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); },
+  async loginWithOtp(phone: string, code: string): Promise<{ token: string; user: User }> { return request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code, purpose: 'login' }) }); },
+  async sendOtp(phone: string, purpose: 'login' | 'reset'): Promise<{ success: boolean; message: string }> { return request('/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone, purpose }) }); },
+  async verifyResetOtp(phone: string, code: string): Promise<{ success: boolean; resetToken: string }> { return request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code, purpose: 'reset' }) }); },
+  async resetPassword(resetToken: string, password: string): Promise<{ success: boolean; message: string }> { return request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ resetToken, password }) }); },
+  async getMe(): Promise<{ user: User }> { return request('/auth/me'); },
+  async updateProfile(data: Partial<User>): Promise<{ user: User }> { return request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); },
 
   async getComponents(category?: string, difficulty?: string, search?: string): Promise<ElectronicComponent[]> {
     const params = new URLSearchParams();
@@ -77,59 +73,25 @@ export const api = {
     const query = params.toString();
     return request<ElectronicComponent[]>(`/components${query ? `?${query}` : ''}`);
   },
-  async getComponentById(id: string): Promise<ElectronicComponent> {
-    return request(`/components/${encodePath(id)}`);
-  },
-  async markComponentLearned(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    return request(`/components/${encodePath(id)}/learn`, { method: 'POST' });
-  },
-
+  async getComponentById(id: string): Promise<ElectronicComponent> { return request(`/components/${encodePath(id)}`); },
+  async markComponentLearned(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> { return request(`/components/${encodePath(id)}/learn`, { method: 'POST' }); },
   async getCourses(): Promise<Course[]> { return request('/courses'); },
   async getCourseById(id: string): Promise<Course> { return request(`/courses/${encodePath(id)}`); },
-  async getLesson(courseId: string, lessonId: string): Promise<CourseLesson> {
-    return request(`/courses/${encodePath(courseId)}/lessons/${encodePath(lessonId)}`);
-  },
-  async completeLesson(lessonId: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    return request('/progress/complete-lesson', { method: 'POST', body: JSON.stringify({ lessonId }) });
-  },
-
-  async getChallenges(difficulty?: string): Promise<CodingChallenge[]> {
-    const query = difficulty ? `?difficulty=${encodeURIComponent(difficulty)}` : '';
-    return request(`/challenges${query}`);
-  },
+  async getLesson(courseId: string, lessonId: string): Promise<CourseLesson> { return request(`/courses/${encodePath(courseId)}/lessons/${encodePath(lessonId)}`); },
+  async completeLesson(lessonId: string): Promise<{ success: boolean; xpEarned: number; user: User }> { return request('/progress/complete-lesson', { method: 'POST', body: JSON.stringify({ lessonId }) }); },
+  async getChallenges(difficulty?: string): Promise<CodingChallenge[]> { const query = difficulty ? `?difficulty=${encodeURIComponent(difficulty)}` : ''; return request(`/challenges${query}`); },
   async getChallengeById(id: string): Promise<CodingChallenge> { return request(`/challenges/${encodePath(id)}`); },
-  async submitChallenge(id: string, code: string): Promise<any> {
-    return request(`/challenges/${encodePath(id)}/submit`, { method: 'POST', body: JSON.stringify({ code }) });
-  },
-
+  async submitChallenge(id: string, code: string): Promise<any> { return request(`/challenges/${encodePath(id)}/submit`, { method: 'POST', body: JSON.stringify({ code }) }); },
   async getProjects(): Promise<RoboticsProject[]> { return request('/projects'); },
   async getProjectById(id: string): Promise<RoboticsProject> { return request(`/projects/${encodePath(id)}`); },
-  async completeProject(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> {
-    return request(`/projects/${encodePath(id)}/complete`, { method: 'POST' });
-  },
+  async completeProject(id: string): Promise<{ success: boolean; xpEarned: number; user: User }> { return request(`/projects/${encodePath(id)}/complete`, { method: 'POST' }); },
   async getAchievements(): Promise<Achievement[]> { return request('/achievements'); },
-
   async aiCheckHealth(): Promise<{ status: string; hasKey: boolean; model: string; searchGrounding?: boolean }> { return request('/ai/health'); },
-  async aiTutor(message: string, history?: AIChatMessage[], context?: any): Promise<{ reply: string }> {
-    return request('/ai/tutor', { method: 'POST', body: JSON.stringify({ message, history, context }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-  async aiGenerateCode(prompt: string, targetBoard = 'Arduino Uno', language = 'cpp'): Promise<AICodeGenerationResult> {
-    return request('/ai/generate-code', { method: 'POST', body: JSON.stringify({ prompt, targetBoard, language }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-  async aiExplainCode(code: string, language = 'cpp'): Promise<{ summary: string; lineByLine: { line: number; explanation: string }[]; concepts: string[] }> {
-    return request('/ai/explain-code', { method: 'POST', body: JSON.stringify({ code, language }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-  async aiDebugCode(code: string, language = 'cpp', errorMessage?: string, hardwareContext?: string): Promise<AIDebugResult> {
-    return request('/ai/debug-code', { method: 'POST', body: JSON.stringify({ code, language, errorMessage, hardwareContext }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-  async aiExplainComponent(componentId: string, userQuestion?: string): Promise<{ explanation: string }> {
-    return request('/ai/explain-component', { method: 'POST', body: JSON.stringify({ componentId, userQuestion }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-  async aiHint(challengeTitle: string, problem: string, currentCode: string, hintLevel = 1): Promise<{ hint: string }> {
-    return request('/ai/hint', { method: 'POST', body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel }) }, AI_REQUEST_TIMEOUT_MS);
-  },
-
-  async interpretCode(code: string, language = 'cpp'): Promise<{ success: boolean; supported: boolean; message: string; actions: SimulationAction[]; logs: string[] }> {
-    return request('/simulation/interpret', { method: 'POST', body: JSON.stringify({ code, language }) });
-  }
+  async aiTutor(message: string, history?: AIChatMessage[], context?: any): Promise<{ reply: string }> { return request('/ai/tutor', { method: 'POST', body: JSON.stringify({ message, history, context }) }, AI_REQUEST_TIMEOUT_MS); },
+  async aiGenerateCode(prompt: string, targetBoard = 'Arduino Uno', language = 'cpp'): Promise<AICodeGenerationResult> { return request('/ai/generate-code', { method: 'POST', body: JSON.stringify({ prompt, targetBoard, language }) }, AI_REQUEST_TIMEOUT_MS); },
+  async aiExplainCode(code: string, language = 'cpp'): Promise<{ summary: string; lineByLine: { line: number; explanation: string }[]; concepts: string[] }> { return request('/ai/explain-code', { method: 'POST', body: JSON.stringify({ code, language }) }, AI_REQUEST_TIMEOUT_MS); },
+  async aiDebugCode(code: string, language = 'cpp', errorMessage?: string, hardwareContext?: string): Promise<AIDebugResult> { return request('/ai/debug-code', { method: 'POST', body: JSON.stringify({ code, language, errorMessage, hardwareContext }) }, AI_REQUEST_TIMEOUT_MS); },
+  async aiExplainComponent(componentId: string, userQuestion?: string): Promise<{ explanation: string }> { return request('/ai/explain-component', { method: 'POST', body: JSON.stringify({ componentId, userQuestion }) }, AI_REQUEST_TIMEOUT_MS); },
+  async aiHint(challengeTitle: string, problem: string, currentCode: string, hintLevel = 1): Promise<{ hint: string }> { return request('/ai/hint', { method: 'POST', body: JSON.stringify({ challengeTitle, problem, currentCode, hintLevel }) }, AI_REQUEST_TIMEOUT_MS); },
+  async interpretCode(code: string, language = 'cpp'): Promise<{ success: boolean; supported: boolean; message: string; actions: SimulationAction[]; logs: string[] }> { return request('/simulation/interpret', { method: 'POST', body: JSON.stringify({ code, language }) }); }
 };
