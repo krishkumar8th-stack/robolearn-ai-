@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { WebComponentImage } from '../components/WebComponentImage';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All 100' },
+  { id: 'all', label: 'All components' },
   { id: 'microcontrollers', label: 'Controllers' },
   { id: 'computing_boards', label: 'Compute / AI' },
   { id: 'robotics', label: 'Flight / Robotics' },
@@ -52,10 +52,10 @@ export const ComponentsPage: React.FC = () => {
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2 text-cyan-600 dark:text-cyan-400 text-xs font-bold uppercase tracking-wider mb-2">
           <Cpu className="w-4 h-4" /> PDF Hardware Directory
-          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> 100 components</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200 dark:border-cyan-900/60 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 normal-case tracking-normal"><Database className="w-3 h-3" /> {PDF_COMPONENT_CATALOG.length} components</span>
         </div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Top 100 Robotics & Drone Components</h1>
-        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">The component list now follows the supplied Top 100 Robotics & Drone Tech Components directory. Open-source/reference photos are fetched for the exact component name when available; source attribution is shown on the image.</p>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Robotics & Drone Components</h1>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 max-w-3xl">A curated robotics hardware directory with exact-name photo matching and reference sources. Component choices are based on common educational and robotics hardware, including parts listed by Robu.in.</p>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
@@ -65,7 +65,7 @@ export const ComponentsPage: React.FC = () => {
 
       <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4">{CATEGORIES.map((cat) => <button key={cat.id} onClick={() => setSelectedCategory(cat.id)} className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${selectedCategory === cat.id ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{cat.label}</button>)}</div>
 
-      <div className="text-xs text-slate-500 dark:text-slate-400 mb-5">Showing {components.length} of 100 PDF components</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 mb-5">Showing {components.length} of {PDF_COMPONENT_CATALOG.length} components</div>
 
       {components.length === 0 ? (
         <div className="text-center py-16 p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"><p className="text-slate-500 dark:text-slate-400 text-sm">No components found matching your query.</p></div>
