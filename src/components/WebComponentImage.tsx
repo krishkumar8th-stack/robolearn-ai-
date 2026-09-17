@@ -5,10 +5,23 @@ import { MEDIA } from '../assets/media';
 type ImageState = {
   url: string | null;
   sourceUrl?: string;
-  source: 'verified' | 'openverse' | 'wikimedia' | 'none';
+  source: 'verified' | 'robu' | 'openverse' | 'wikimedia' | 'none';
 };
 
 const memoryCache = new Map<string, ImageState>();
+
+
+const ROBU_PRODUCT_URLS: Record<string, string> = {
+  'Arduino Uno R3/R4': 'https://robu.in/product/original-arduino-uno-rev3/',
+  'ESP32 WROOM': 'https://robu.in/product/espressif-esp32-wroom-32-4m-32mbit-flash-wifi-bluetooth-module/',
+  'HC-SR04 Ultrasonic Sensor': 'https://robu.in/product/hc-sr04-ultrasonic-range-finder/',
+  'SG90 Micro Servo (9g)': 'https://robu.in/product/towerpro-sg90-9gm-1-2~kg-180-degree-rotation-servo-motor-good-quality/',
+  'L298N H-Bridge Driver': 'https://robu.in/product/l298n-2a-based-motor-driver-module-good-quality/',
+  'TB6612FNG Driver': 'https://robu.in/product/tb6612fng-motor-driver-module-performance-ultra-small-volume-3-pi-matching-performance-ultra-l298n/',
+  'RC522 RFID Reader/Writer SPI': 'https://robu.in/product/rc522-rfid-reader-writer-module-with-card-and-tag/',
+  'DS3231 RTC Module': 'https://robu.in/product/ds3231-rtc-module-precise-real-time-clock-i2c-at24c32/',
+  'PCA9685 16-Channel Servo Driver': 'https://robu.in/product/16-channel-12-bit-pwm-servo-driver-i2c-interface-pca9685-for-arduino-raspberry-pi/',
+};
 
 const SEARCH_ALIASES: Record<string, string[]> = {
   'Arduino Uno R3/R4': ['Arduino Uno R3', 'Arduino Uno Rev3'],
@@ -196,7 +209,8 @@ export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, 
     return () => { cancelled = true; };
   }, [started, localImage, state.url, id, name]);
 
-  const sourceLabel = state.source === 'verified' ? 'Verified asset' : state.source === 'openverse' ? 'Web photo · Openverse' : state.source === 'wikimedia' ? 'Web photo · Wikimedia' : '';
+  const robuSourceUrl = ROBU_PRODUCT_URLS[name];
+  const sourceLabel = state.source === 'verified' ? 'Verified asset' : state.source === 'robu' ? 'Robu product' : state.source === 'openverse' ? 'Web photo · Openverse' : state.source === 'wikimedia' ? 'Web photo · Wikimedia' : '';
 
   return (
     <div ref={ref} className="relative w-full h-full">
@@ -221,7 +235,7 @@ export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, 
       )}
       {state.url && <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between gap-2 pointer-events-none">
         <span className="px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white">{sourceLabel}</span>
-        {state.sourceUrl && state.source !== 'verified' && <a href={state.sourceUrl} target="_blank" rel="noreferrer" aria-label={`Open image source for ${name}`} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white hover:text-cyan-300 transition" onClick={(e) => e.stopPropagation()}>Source <ExternalLink className="w-3 h-3" /></a>}
+        {(state.sourceUrl || robuSourceUrl) && state.source !== 'verified' && <a href={state.sourceUrl || robuSourceUrl} target="_blank" rel="noreferrer" aria-label={`Open source for ${name}`} className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-[10px] text-white hover:text-cyan-300 transition" onClick={(e) => e.stopPropagation()}>Source <ExternalLink className="w-3 h-3" /></a>}
       </div>}
     </div>
   );
