@@ -20,7 +20,7 @@ const CATEGORIES = [
 ];
 
 export const ComponentsPage: React.FC = () => {
-  const { user, addXp } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
