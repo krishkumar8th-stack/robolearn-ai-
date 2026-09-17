@@ -120,7 +120,9 @@ const featuredComponents = buildFeaturedComponents();
 let isMongoConnected = false;
 
 function usersCollection() {
-  return mongoose.connection.db?.collection<MongoStoredUser>('roblearn_users');
+  // The Mongo driver can infer an ObjectId/string _id shape that conflicts with
+  // our app's string ids. Keep this collection boundary intentionally flexible.
+  return mongoose.connection.db?.collection('roblearn_users');
 }
 
 export async function initDatabase() {
