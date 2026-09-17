@@ -7,11 +7,15 @@ export default async function handler(req: any, res: any) {
 
   try {
     const phone = normalizeIndianPhone(req.body?.phone);
-    const purpose = req.body?.purpose === 'reset' ? 'reset' : 'login';
+    const purpose = req.body?.purpose === 'reset' ? 'reset' : req.body?.purpose === 'register' ? 'register' : 'login';
     if (!phone) return res.status(400).json({ error: 'Enter a valid 10-digit Indian mobile number.' });
 
     const user = await findUserByPhone(phone);
-    if (!user) return res.status(404).json({ error: purpose === 'reset' ? 'No RoboLearn account is linked to this mobile number.' : 'No account is linked to this mobile number. Add your number to your profile first.' });
+    if (purpose === 'register') {
+      if (user) return res.status(409).json({ error: 'That mobile number is already linked to an account.' });
+    } else if (!user) {
+      return res.status(404).json({ error: purpose === 'reset' ? 'No RoboLearn account is linked to this mobile number.' : 'No account is linked to this mobile number.' });
+    }
 
     await sendOtp(phone);
     return res.status(200).json({ success: true, message: 'OTP sent successfully.' });
