@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { dbService } from '../../server/db/database.js';
-import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET?.trim() || (process.env.NODE_ENV === 'production' ? '' : 'roblearn-dev-fallback-secret');
-
 const text = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 
 export default async function handler(req: any, res: any) {
@@ -25,7 +23,6 @@ export default async function handler(req: any, res: any) {
     if (await dbService.findUserByEmail(email)) return res.status(409).json({ error: 'An account with this email address already exists.' });
     if (await dbService.findUserByUsername(username)) return res.status(409).json({ error: 'That username is already taken.' });
 
-    const passwordHash = await bcrypt.hash(password, 12);
     const newUser = await dbService.createUser({
       fullName,
       username,
@@ -35,13 +32,12 @@ export default async function handler(req: any, res: any) {
       preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage || 'cpp',
       preferredLanguage: req.body?.preferredLanguage || 'en',
       lastActiveDate: new Date().toISOString(),
-      password,
-      passwordHash
+      password
     } as any);
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
-    const { passwordHash: storedHash, ...userWithoutPassword } = newUser;
-    void storedHash;
+    const { passwordHash, ...userWithoutPassword } = newUser;
+    void passwordHash;
     return res.status(201).json({ token, user: userWithoutPassword });
   } catch (error: any) {
     console.error('Register error:', error);
