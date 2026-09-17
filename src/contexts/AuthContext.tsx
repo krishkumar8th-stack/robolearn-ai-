@@ -43,10 +43,6 @@ function syncDashboardStats(user: User | null) {
   const xp = Math.max(0, user.xp || 0);
   const level = Math.max(1, user.level || Math.floor(xp / 200) + 1);
   const streak = Math.max(0, user.streak || 0);
-
-  // The learning catalog currently contains a broad multi-course path. Use a
-  // stable lesson denominator so progress is derived from the user's real
-  // completed lesson IDs instead of the old demo value.
   const overallProgress = Math.min(100, Math.round((completedLessons / 50) * 100));
   const activeCourses = completedLessons > 0 ? 1 : 0;
   const progressNodes = Array.from(root.querySelectorAll('p'));
@@ -67,18 +63,20 @@ function syncDashboardStats(user: User | null) {
 
   const sidebarProgress = progressNodes.find(node => node.textContent?.trim() === 'Your Progress')?.parentElement;
   if (sidebarProgress) {
-    const percentNode = Array.from(sidebarProgress.querySelectorAll('span')).find(node => node.textContent?.trim() === '42%');
-    if (percentNode) percentNode.textContent = `${overallProgress}%`;
-    const levelNode = Array.from(sidebarProgress.querySelectorAll('p')).find(node => node.textContent?.includes('Level 3 - Explorer'));
-    if (levelNode) levelNode.textContent = `Level ${level} - ${level >= 5 ? 'Builder' : level >= 3 ? 'Explorer' : 'Beginner'}`;
-    const xpNode = Array.from(sidebarProgress.querySelectorAll('p')).find(node => node.textContent?.includes('420 / 1000 XP'));
+    const percentNode = Array.from(sidebarProgress.querySelectorAll('span')).find(node => /^\d+%$/.test(node.textContent?.trim() || ''));
+    if (percentNode && percentNode.textContent !== `${overallProgress}%`) percentNode.textContent = `${overallProgress}%`;
+
+    const levelNode = Array.from(sidebarProgress.querySelectorAll('p')).find(node => /^Level \d+ - /.test(node.textContent?.trim() || ''));
+    const levelName = level >= 5 ? 'Builder' : level >= 3 ? 'Explorer' : 'Beginner';
+    if (levelNode) levelNode.textContent = `Level ${level} - ${levelName}`;
+
+    const xpNode = Array.from(sidebarProgress.querySelectorAll('p')).find(node => /XP$/.test(node.textContent?.trim() || ''));
     if (xpNode) xpNode.textContent = `${xp} XP`;
 
     const progressPath = sidebarProgress.querySelector('path[stroke-dasharray]') as SVGPathElement | null;
     if (progressPath) progressPath.setAttribute('stroke-dasharray', `${overallProgress}, 100`);
   }
 
-  // Keep the browser-visible profile context useful even before a full page refresh.
   root.setAttribute('data-user-id', user.id);
   root.setAttribute('data-learned-components', String(learnedComponents));
 }
@@ -129,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     const root = document.querySelector('main');
-    if (root) observer.observe(root, { childList: true, subtree: true, characterData: true });
+    if (root) observer.observe(root, { childList: true, subtree: true, characterData: true, attributes: true });
     return () => observer.disconnect();
   }, [user]);
 
@@ -182,14 +180,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newXp = user.xp + amount;
     const newLevel = Math.floor(newXp / 200) + 1;
 
-    // Optimistic UI update, followed by persistence in MongoDB. This prevents
-    // XP from disappearing after logout, refresh, or a new device login.
     setUser(prev => prev ? { ...prev, xp: newXp, level: newLevel } : null);
     void api.updateProfile({ xp: newXp, level: newLevel }).then((res) => {
       if (res?.user) setUser(res.user);
     }).catch(() => {
-      // Keep the optimistic value visible; the next auth refresh will restore
-      // the server value if the persistence request failed.
+      // The next authenticated refresh will restore the server value if this write fails.
     });
 
     if (newLevel > oldLevel) {
