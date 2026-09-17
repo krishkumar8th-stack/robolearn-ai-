@@ -214,7 +214,16 @@ export function parseAndInterpretCode(code: string, language = 'cpp', sensorDist
     `[SIM] Arduino virtual board • sensor distance ${Math.round(safeDistance)} cm`
   ];
 
+  // Seed variables used by common ultrasonic helper patterns before evaluating
+  // branches. This makes code such as "long d = readDistance(); if (d < 20)"
+  // respond to the virtual HC-SR04 slider instead of evaluating against a
+  // placeholder value.
   const variables: Record<string, number> = { distance: safeDistance, d: safeDistance };
+  const sensorAssignments = source.matchAll(/(?:int|long|float|double)\\s+(\\w+)\\s*=\\s*(?:readDistance|getDistance|getSonarDistance|readUltrasonic|pulseIn)\\s*\\(/gi);
+  for (const match of sensorAssignments) {
+    variables[match[1]] = safeDistance;
+  }
+
   const branchResult = extractSelectedIfBranches(source, variables, logs);
   const loopResult = expandNumericForLoops(branchResult.source, logs);
   const unsupportedCount = parseStatements(loopResult.source, safeDistance, actions, logs);
