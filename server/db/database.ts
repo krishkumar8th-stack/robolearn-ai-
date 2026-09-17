@@ -6,6 +6,7 @@ import { SEED_COMPONENTS, SEED_COURSES, SEED_CHALLENGES, SEED_PROJECTS, SEED_ACH
 import { MISSING_ROBOTICS_LEVELS } from '../../src/data/roboticsLevels.js';
 import { THREE_LEVEL_ROBOTICS } from '../../src/data/threeLevelRobotics.js';
 import { COMPONENT_CATALOG, catalogEntryToComponent } from '../../src/data/componentCatalog.js';
+import { PDF_COMPONENT_CATALOG } from '../../src/data/pdfComponentCatalog.js';
 
 interface InMemoryStore {
   components: Map<string, ElectronicComponent>;
@@ -23,6 +24,7 @@ const store: InMemoryStore = { components: new Map(), courses: new Map(), challe
 
 for (const comp of SEED_COMPONENTS) store.components.set(comp.id, comp);
 for (const entry of COMPONENT_CATALOG) if (!store.components.has(entry.id)) store.components.set(entry.id, catalogEntryToComponent(entry));
+for (const entry of PDF_COMPONENT_CATALOG) if (!store.components.has(entry.id)) store.components.set(entry.id, catalogEntryToComponent(entry));
 for (const course of SEED_COURSES) store.courses.set(course.id, course);
 for (const course of MISSING_ROBOTICS_LEVELS) store.courses.set(course.id, course);
 for (const course of THREE_LEVEL_ROBOTICS) store.courses.set(course.id, course);
