@@ -72,7 +72,7 @@ function expandNumericForLoops(source: string, logs: string[]): { source: string
     const valid = (value: number) => operator === '<' ? value < end : operator === '<=' ? value <= end : operator === '>' ? value > end : value >= end;
     for (let value = start, guard = 0; valid(value) && guard < 100; value += step, guard += 1) values.push(value);
     logs.push(`[LOOP] Expanded ${variable} over ${values.length} iteration(s).`);
-    return values.map(value => body.replace(new RegExp(`\\\\b${variable}\\\\b`, 'g'), String(value))).join('\n');
+    return values.map(value => body.replace(new RegExp(`\\b${variable}\\b`, 'g'), String(value))).join('\n');
   });
   return { source: expanded, handled };
 }
