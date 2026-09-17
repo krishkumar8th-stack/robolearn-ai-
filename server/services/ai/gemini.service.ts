@@ -85,7 +85,7 @@ export const geminiService = {
         ],
       },
     });
-    return response.text?.trim() || 'I could not generate an answer right now. Please try again.';
+    const text = response.text?.trim();\n    if (!text) throw new Error('Gemini returned an empty tutor response. Please retry.');\n    return text;
   },
 
   async generateCode(userPrompt: string, targetBoard = 'Arduino Uno', language = 'cpp'): Promise<AICodeGenerationResult> {
@@ -237,7 +237,7 @@ Embedded/hardware workflow likely: ${isEmbedded ? 'yes' : 'no'}`;
       contents: prompt,
       config: { systemInstruction: 'Explain hardware accurately. Never invent specifications, pinouts, ratings, or part-specific claims not supported by the supplied component data.' },
     });
-    return response.text?.trim() || 'Explanation unavailable at this moment.';
+    const text = response.text?.trim();\n    if (!text) throw new Error('Gemini returned an empty component explanation. Please retry.');\n    return text;
   },
 
   async getHint(challengeTitle: string, problem: string, currentCode: string, hintLevel = 1): Promise<string> {
@@ -248,6 +248,6 @@ Embedded/hardware workflow likely: ${isEmbedded ? 'yes' : 'no'}`;
       contents: `Challenge: ${challengeTitle}\nProblem: ${problem}\nHint level: ${safeLevel}\nCurrent code:\n\`\`\`\n${currentCode}\n\`\`\``,
       config: { systemInstruction: 'Give one targeted Socratic programming hint. Do not reveal the full solution.' },
     });
-    return response.text?.trim() || 'Think about your inputs, control flow, and timing.';
+    const text = response.text?.trim();\n    if (!text) throw new Error('Gemini returned an empty hint. Please retry.');\n    return text;
   },
 };
