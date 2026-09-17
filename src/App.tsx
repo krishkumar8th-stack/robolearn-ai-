@@ -23,6 +23,7 @@ const ChallengesPage = lazy(() => import('./pages/ChallengesPage').then(m => ({ 
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage').then(m => ({ default: m.UserDashboardPage })));
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage').then(m => ({ default: m.AchievementsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/AuthPages').then(m => ({ default: m.RegisterPage })));
 
@@ -48,6 +49,7 @@ export default function App() {
     <Route path="/projects" element={<Protected><ProjectsPage /></Protected>} />
     <Route path="/dashboard" element={<Protected><UserDashboardPage /></Protected>} />
     <Route path="/achievements" element={<Protected><AchievementsPage /></Protected>} />
+    <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></main><Footer /></div></AppErrorBoundary><Analytics /></SimulationProvider></LanguageProvider></ThemeProvider></AuthProvider></BrowserRouter>;
 }
