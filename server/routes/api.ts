@@ -329,7 +329,17 @@ router.post('/ai/hint', aiLimiter, async (req: Request, res: Response) => {
 router.post('/simulation/interpret', async (req: Request, res: Response) => {
   const code = typeof req.body?.code === 'string' ? req.body.code.slice(0, 100_000) : '';
   if (!code) return res.status(400).json({ error: 'Code is required.' });
-  const sensorDistance = Number(req.body?.sensorDistance);\n  const safeSensorDistance = Number.isFinite(sensorDistance) ? Math.max(2, Math.min(400, sensorDistance)) : 42;\n  return res.json(parseAndInterpretCode(code, normalizeText(req.body?.language, 30) || 'cpp', safeSensorDistance));
+  const sensorDistance = Number(req.body?.sensorDistance);
+  const safeSensorDistance = Number.isFinite(sensorDistance)
+    ? Math.max(2, Math.min(400, sensorDistance))
+    : 42;
+  return res.json(
+    parseAndInterpretCode(
+      code,
+      normalizeText(req.body?.language, 30) || 'cpp',
+      safeSensorDistance
+    )
+  );
 });
 
 router.use((_req: Request, res: Response) => res.status(404).json({ error: 'API endpoint not found.' }));
