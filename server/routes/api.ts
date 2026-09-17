@@ -30,6 +30,9 @@ router.use(rateLimit({ windowMs: 60_000, max: 180 }));
 const authLimiter = rateLimit({ windowMs: 5 * 60_000, max: 20, message: 'Too many authentication attempts. Please wait a few minutes.' });
 const aiLimiter = rateLimit({ windowMs: 60_000, max: 30, message: 'AI request limit reached. Please wait a moment and try again.' });
 
+const OWNER_EMAIL = 'krishkumar8th@gmail.com';
+const isOwnerEmail = (email: string) => email.trim().toLowerCase() === OWNER_EMAIL;
+
 function normalizeText(value: unknown, maxLength: number): string {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
 }
@@ -91,7 +94,7 @@ router.post('/auth/register', authLimiter, async (req: Request, res: Response) =
       fullName,
       username,
       email,
-      role: 'user',
+      role: isOwnerEmail(email) ? 'admin' : 'user',
       experienceLevel: req.body?.experienceLevel || 'Beginner',
       preferredProgrammingLanguage: req.body?.preferredProgrammingLanguage || 'cpp',
       preferredLanguage: req.body?.preferredLanguage || 'en',
@@ -120,9 +123,10 @@ router.post('/auth/login', authLimiter, async (req: Request, res: Response) => {
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) return res.status(401).json({ error: 'Invalid email or password.' });
 
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, requireJwtSecret(), { expiresIn: '7d' });
+  const effectiveRole = isOwnerEmail(user.email) ? 'admin' : user.role;
+  const token = jwt.sign({ id: user.id, email: user.email, role: effectiveRole }, requireJwtSecret(), { expiresIn: '7d' });
   const { passwordHash, ...userWithoutPassword } = user;
-  return res.json({ token, user: userWithoutPassword });
+  return res.json({ token, user: { ...userWithoutPassword, role: effectiveRole } });
 });
 
 router.get('/auth/me', async (req: Request, res: Response) => {
