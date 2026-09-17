@@ -20,11 +20,13 @@ function ensureDatabase() {
   return databaseInit;
 }
 
-app.use(async (req, _res, next) => {\n  if (req.path === '/health') return next();
+app.use(async (req, _res, next) => {
+  if (req.path === '/health') return next();
   try {
     await ensureDatabase();
     next();
   } catch (error) {
+    databaseInit = null;
     next(error);
   }
 });
@@ -45,7 +47,11 @@ app.use(apiRouter);
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('API error:', error);
   if (res.headersSent) return;
-  const message = String(error?.message || '');\n  if (/MONGODB_URI|MongoDB connection failed|MongoDB is not initialized/i.test(message)) {\n    return res.status(503).json({ error: 'Database service is temporarily unavailable. Check the server database configuration.' });\n  }\n  res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error.' : (error?.message || 'Internal server error.') });
+  const message = String(error?.message || '');
+  if (/MONGODB_URI|MongoDB connection failed|MongoDB is not initialized/i.test(message)) {
+    return res.status(503).json({ error: 'Database service is temporarily unavailable. Check the server database configuration.' });
+  }
+  res.status(500).json({ error: process.env.NODE_ENV === 'production' ? 'Internal server error.' : (error?.message || 'Internal server error.') });
 });
 
 export default app;
