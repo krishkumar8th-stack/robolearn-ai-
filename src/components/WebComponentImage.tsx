@@ -10,6 +10,12 @@ type ImageState = {
 
 const memoryCache = new Map<string, ImageState>();
 
+// Robu product pages are used as authoritative references. Exact product image
+// URLs are intentionally not guessed: if an exact licensed/local asset is not
+// available, the component falls back to the existing verified/open-license
+// image pipeline rather than showing a potentially wrong product photo.
+const ROBU_SOURCE_LABEL = 'Robu reference';
+
 
 const ROBU_PRODUCT_URLS: Record<string, string> = {
   'Arduino Uno R3/R4': 'https://robu.in/product/original-arduino-uno-rev3/',
