@@ -74,7 +74,7 @@ export const dbService = {
     return saveUser(newUser);
   },
   async updateUserProgress(userId: string, updates: Partial<User>) { const user = await findUserById(userId); if (!user) return null; const updated: StoredUser = { ...user, ...updates }; if (updated.xp !== undefined) updated.level = Math.floor(updated.xp / 200) + 1; updated.lastActiveDate = new Date().toISOString(); return saveUser(updated); },
-  async getComponents(category?: string, difficulty?: string, search?: string) { let list = featuredComponents; if (category) list = list.filter(c => c.category === category); if (difficulty) list = list.filter(c => c.difficulty === difficulty); if (search) { const q = search.toLowerCase().trim(); list = list.filter(c => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.tagline.toLowerCase().includes(q)); } return list; },
+  async getComponents(category?: string, difficulty?: string, search?: string) { let list = Array.from(store.components.values()); if (category) list = list.filter(c => c.category === category); if (difficulty) list = list.filter(c => c.difficulty === difficulty); if (search) { const q = search.toLowerCase().trim(); list = list.filter(c => c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || c.tagline.toLowerCase().includes(q)); } return list; },
   async getComponentById(id: string) { return store.components.get(id) || null; },
   async getCourses() { return THREE_LEVEL_ROBOTICS; },
   async getCourseById(id: string) { return store.courses.get(id) || null; },
