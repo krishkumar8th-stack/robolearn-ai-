@@ -43,7 +43,7 @@ function collectTextNodes(root: ParentNode) {
 }
 
 export const AutoTranslatePage: React.FC = () => {
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, currentMeta } = useLanguage();
   const originals = useRef(new Map<Text, string>());
   const attrOriginals = useRef(new Map<Element, Record<string, string>>());
   const cache = useRef<Record<string, string>>({});
@@ -119,7 +119,7 @@ export const AutoTranslatePage: React.FC = () => {
       const missing = uniqueSources.filter((source) => !cache.current[source]);
       for (let i = 0; i < missing.length; i += BATCH_SIZE) {
         const batch = missing.slice(i, i + BATCH_SIZE);
-        const translated = await api.translateTexts(batch, currentLanguage);
+        const translated = await api.translateTexts(batch, currentMeta.name);
         batch.forEach((source, index) => {
           const value = translated[index];
           if (value) cache.current[source] = value;
