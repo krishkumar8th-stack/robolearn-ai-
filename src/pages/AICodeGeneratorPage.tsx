@@ -67,10 +67,28 @@ export const AICodeGeneratorPage: React.FC = () => {
 
   const debug = async () => {
     if (!code.trim() || isLoading) return;
-    setIsLoading(true); setError(null); setStatus('Debugging…');
-    try { setDebugResult(await api.aiDebugCode(code, language, undefined, targetBoard)); setActivePanel('debug'); setStatus('Debug analysis ready'); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not debug the code.'); setStatus('Error'); }
-    finally { setIsLoading(false); }
+    setIsLoading(true); setError(null); setStatus('Checking code + asking AI…');
+    try {
+      // First run the same virtual-hardware interpreter used by the 3D Lab.
+      // This gives the AI real simulator/compiler feedback instead of a generic review.
+      let simulatorError: string | undefined;
+      if (language === 'cpp' || language === 'c' || language === 'arduino') {
+        try {
+          const simulation = await api.interpretCode(code, editorLanguage);
+          if (!simulation.success || !simulation.actions?.length) {
+            simulatorError = simulation.message || 'The virtual hardware interpreter produced no executable actions.';
+          }
+        } catch (simulationFailure) {
+          simulatorError = simulationFailure instanceof Error ? simulationFailure.message : 'Virtual simulator check failed.';
+        }
+      }
+      setDebugResult(await api.aiDebugCode(code, language, simulatorError, targetBoard));
+      setActivePanel('debug');
+      setStatus(simulatorError ? 'AI debug + simulator issue found' : 'Debug analysis ready');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not debug the code.');
+      setStatus('Error');
+    } finally { setIsLoading(false); }
   };
 
   const improve = async () => {
