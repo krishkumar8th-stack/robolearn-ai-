@@ -16,6 +16,31 @@ const memoryCache = new Map<string, ImageState>();
 // image pipeline rather than showing a potentially wrong product photo.
 const ROBU_SOURCE_LABEL = 'Robu reference';
 
+const LOCAL_NAME_ALIASES: Record<string, string> = {
+  'Arduino Uno R3/R4': 'arduino-uno',
+  'ESP32 WROOM': 'esp32',
+  'ESP32 NodeMCU': 'esp32',
+  'ESP32 DevKit V1': 'esp32',
+  'HC-SR04 Ultrasonic Sensor': 'hc-sr04',
+  'SG90 Micro Servo (9g)': 'sg90-servo',
+  'MG996R Metal Gear Servo': 'mg996r',
+  'L298N H-Bridge Driver': 'l298n-driver',
+  'L298N Motor Driver Module': 'l298n-driver',
+  'Solderless Breadboards': 'breadboard',
+  'Mini Breadboard': 'breadboard',
+  'LED / Diode Kit': 'led',
+  'Diode / LED Kit': 'led',
+  'LED 5mm Red': 'led',
+  'Resistor Kit': 'resistor'
+};
+
+const getLocalImage = (id: string, name: string) => {
+  const direct = MEDIA.components[id];
+  if (direct) return direct;
+  const alias = LOCAL_NAME_ALIASES[name];
+  return alias ? MEDIA.components[alias] : undefined;
+};
+
 
 const ROBU_PRODUCT_URLS: Record<string, string> = {
   'Arduino Uno R3/R4': 'https://robu.in/product/original-arduino-uno-rev3/',
@@ -62,6 +87,13 @@ const SEARCH_ALIASES: Record<string, string[]> = {
 };
 
 
+const buildSearchQueries = (name: string) => {
+  const withoutParentheses = name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const slashExpanded = name.replace(/\s*\/\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = name.split('/').map((part) => part.trim()).filter(Boolean);
+  return [...new Set([name, withoutParentheses, slashExpanded, ...parts].filter(Boolean))];
+};
+
 const clean = (value: string) => value
   .toLowerCase()
   .replace(/\b(v\d+|r\d+|rev\.?\s*\d+)\b/gi, ' ')
@@ -97,7 +129,7 @@ function scoreSearchResult(queryName: string, title: string, requestedName: stri
 
 async function searchOpenverse(name: string): Promise<ImageState | null> {
   const aliases = SEARCH_ALIASES[name] || [];
-  const queries = [...aliases, `"${name}"`, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  const queries = [...aliases, ...buildSearchQueries(name), `"${name}"`, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
   for (const q of queries) {
     try {
       const params = new URLSearchParams({ q, page_size: '8', mature: 'false' });
@@ -132,7 +164,7 @@ async function searchOpenverse(name: string): Promise<ImageState | null> {
 
 async function searchWikimedia(name: string): Promise<ImageState | null> {
   const aliases = SEARCH_ALIASES[name] || [];
-  const queries = [...aliases.map((q) => `intitle:"${q}"`), `intitle:"${name}"`, ...aliases, name, clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
+  const queries = [...aliases.map((q) => `intitle:"${q}"`), ...buildSearchQueries(name).map((q) => `intitle:"${q}"`), ...aliases, ...buildSearchQueries(name), clean(name)].filter((query, index, all) => query && all.indexOf(query) === index);
   for (const query of queries) {
     try {
       const params = new URLSearchParams({
@@ -171,7 +203,7 @@ async function searchWikimedia(name: string): Promise<ImageState | null> {
 const cacheKey = (id: string, name: string) => `robolearn:web-image:${id}:${name}`;
 
 export const WebComponentImage: React.FC<{ id: string; name: string }> = ({ id, name }) => {
-  const localImage = MEDIA.components[id];
+  const localImage = getLocalImage(id, name);
   const cached = memoryCache.get(id);
   const [state, setState] = useState<ImageState>(localImage ? { url: localImage, source: 'verified' } : cached || { url: null, source: 'none' });
   const [started, setStarted] = useState(Boolean(localImage || cached?.url));
