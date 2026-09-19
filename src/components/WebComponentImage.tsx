@@ -23,7 +23,7 @@ const LOCAL_NAME_ALIASES: Record<string, string> = {
   'ESP32 DevKit V1': 'esp32',
   'HC-SR04 Ultrasonic Sensor': 'hc-sr04',
   'SG90 Micro Servo (9g)': 'sg90-servo',
-  'MG996R Metal Gear Servo': 'mg996r',
+  'MG996R Metal Gear Servo': 'servo',
   'L298N H-Bridge Driver': 'l298n-driver',
   'L298N Motor Driver Module': 'l298n-driver',
   'Solderless Breadboards': 'breadboard',
@@ -31,7 +31,11 @@ const LOCAL_NAME_ALIASES: Record<string, string> = {
   'LED / Diode Kit': 'led',
   'Diode / LED Kit': 'led',
   'LED 5mm Red': 'led',
-  'Resistor Kit': 'resistor'
+  'Resistor Kit': 'resistor',
+  'MPU6050': 'mpu6050-imu',
+  'PIR Sensor (HC-SR501)': 'pir-sensor',
+  'PIR Motion Sensor': 'pir-sensor',
+  'TT DC Gear Motor': 'tt-dc-motor'
 };
 
 const getLocalImage = (id: string, name: string) => {
