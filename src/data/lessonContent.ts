@@ -138,7 +138,6 @@ export const ROBOTICS_LESSONS: RoboticsLesson[] = [
       model: { modelName: 'TB6612FNG Dual Motor Driver', format: 'GLB', thumbnail: 'Detailed PCB render showing motor driver IC, A01/A02/B01/B02 outputs and logic/power headers.', annotations: [{ id: 'aout', label: 'Motor A outputs', description: 'Connect to motor A terminals.' }, { id: 'bout', label: 'Motor B outputs', description: 'Connect to motor B terminals.' }, { id: 'vm', label: 'Motor supply', description: 'Higher-current motor power input.' }, { id: 'vcc', label: 'Logic supply', description: 'Controller-side logic supply.' }, { id: 'gnd', label: 'GND', description: 'Shared electrical reference.' }] },
       quizId: 'quiz-i1-motor-driver',
       xpReward: 75
-    }
   },
   {
     lessonId: 'i2-i2c-communication',
@@ -177,7 +176,6 @@ export const ROBOTICS_LESSONS: RoboticsLesson[] = [
     model: { modelName: 'Autonomous Rover System Architecture', format: 'GLB', thumbnail: 'High-detail autonomous rover in a clean lab scene with camera, distance sensor, IMU, motor wheels and compute board visible.', annotations: [{ id: 'perception', label: 'Perception', description: 'Camera, range and inertial sensors provide observations.' }, { id: 'compute', label: 'Compute', description: 'Runs state estimation, planning and control.' }, { id: 'actuation', label: 'Actuation', description: 'Motor drivers and motors execute control commands.' }, { id: 'safety', label: 'Safety layer', description: 'Emergency stop, limits and fallback behavior.' }, { id: 'telemetry', label: 'Telemetry', description: 'Logs system state for monitoring and debugging.' }] },
       quizId: 'quiz-a1-autonomy-loop',
       xpReward: 100
-    }
   },
   {
     lessonId: 'a2-drone-flight-controller-basics',
