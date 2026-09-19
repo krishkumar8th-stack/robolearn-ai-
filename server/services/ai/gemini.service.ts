@@ -33,7 +33,7 @@ Rules for responses:
 - Do not claim you executed code, accessed a private system, or verified an external fact unless that actually happened.
 - For hardware questions, do not invent ratings, pinouts, or exact specifications; tell the learner to verify the component documentation when a part-specific value matters.
 - For schoolwork, teach the reasoning and present steps clearly rather than only giving a final line.
-- Keep the tone friendly and direct.`;
+- Keep the tone friendly and direct.\n- When a response language is supplied in session context, answer in that language unless the user explicitly asks for another language.`;
 
 function buildHistory(history: AIChatMessage[]): string {
   return history.slice(-20).map(msg => {
@@ -100,7 +100,7 @@ export const geminiService = {
       context?.experienceLevel ? `Learner level: ${context.experienceLevel}` : '',
       context?.currentLesson ? `Current focus: ${context.currentLesson}` : '',
       context?.hardware ? `Hardware context: ${context.hardware}` : '',
-      context?.language ? `Preferred programming language: ${context.language}` : '',
+      context?.language ? `Response language: ${context.language}` : '',
       context?.mode ? `Teaching mode: ${context.mode}` : '',
       context?.currentCode ? `Current code:\n${context.currentCode}` : '',
     ].filter(Boolean).join('\n');
