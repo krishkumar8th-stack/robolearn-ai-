@@ -219,7 +219,7 @@ export function parseAndInterpretCode(code: string, language = 'cpp', sensorDist
   // respond to the virtual HC-SR04 slider instead of evaluating against a
   // placeholder value.
   const variables: Record<string, number> = { distance: safeDistance, d: safeDistance };
-  const sensorAssignments = source.matchAll(/(?:int|long|float|double)\\s+(\\w+)\\s*=\\s*(?:readDistance|getDistance|getSonarDistance|readUltrasonic|pulseIn)\\s*\\(/gi);
+  const sensorAssignments = source.matchAll(/(?:int|long|float|double)\s+(\w+)\s*=\s*(?:readDistance|getDistance|getSonarDistance|readUltrasonic|pulseIn)\s*\(/gi);
   for (const match of sensorAssignments) {
     variables[match[1]] = safeDistance;
   }
