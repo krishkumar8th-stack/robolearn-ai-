@@ -28,7 +28,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export const Navbar: React.FC = () => {
-  const { user, logout, quickDemoLogin } = useAuth();
+  const { user, logout } = useAuth();
   const { currentLanguage, currentMeta, setLanguage, languages, t } = useLanguage();
   const { effectiveTheme, setTheme } = useTheme();
   const location = useLocation();
@@ -269,9 +269,6 @@ export const Navbar: React.FC = () => {
             </div>
           ) : (
             <div className="hidden sm:flex items-center gap-1.5">
-              <button type="button" onClick={quickDemoLogin} className="hidden md:inline-flex items-center gap-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-cyan-600 dark:text-cyan-400 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition">
-                Demo
-              </button>
               <Link to="/login" className="px-2 sm:px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white">{t('nav.login')}</Link>
               <Link to="/register" className="px-3 sm:px-3.5 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl text-xs font-bold transition shadow-sm">{t('nav.register')}</Link>
             </div>
