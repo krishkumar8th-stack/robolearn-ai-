@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { SimulationProvider } from './contexts/SimulationContext';
 import { Navbar } from './components/layout/Navbar';
+import { AutoTranslatePage } from './components/i18n/AutoTranslatePage';
 import { Footer } from './components/layout/Footer';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -32,7 +33,7 @@ const RootRoute: React.FC = () => { const { user, isLoading } = useAuth(); if (i
 const Protected: React.FC<{ children: React.ReactElement }> = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><ThemeProvider><LanguageProvider><SimulationProvider><AppErrorBoundary><div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#070b14] dark:text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300"><Navbar /><main className="flex-1"><Suspense fallback={<RouteLoader />}><Routes>
+  return <BrowserRouter><AuthProvider><ThemeProvider><LanguageProvider><AutoTranslatePage /><SimulationProvider><AppErrorBoundary><div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-[#070b14] dark:text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300"><Navbar /><main className="flex-1"><Suspense fallback={<RouteLoader />}><Routes>
     <Route path="/" element={<RootRoute />} />
     <Route path="/landing" element={<LandingPage />} />
     <Route path="/login" element={<LoginPage />} />
