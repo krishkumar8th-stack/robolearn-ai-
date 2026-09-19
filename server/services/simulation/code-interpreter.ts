@@ -130,7 +130,7 @@ function parseStatements(source: string, sensorDistance: number, actions: Simula
     const analog = line.match(/analogWrite\s*\(\s*(\w+|\d+)\s*,\s*([^\)]+)\)/i);
     if (analog) {
       const speed = clamp(readNumber(analog[2], variables, 0), 0, 255);
-      actions.push({ type: 'MOTOR_SPEED', pin: analog[1], speed, direction: speed > 0 ? 'FORWARD' : 'STOP', duration: 100 });
+      actions.push({ type: 'MOTOR_SPEED', pin: analog[1], speed, direction: speed > 0 ? 'FORWARD' : undefined, duration: 100 });
       logs.push(`[PWM] Pin ${analog[1]} → ${Math.round(speed)}/255`);
       continue;
     }
