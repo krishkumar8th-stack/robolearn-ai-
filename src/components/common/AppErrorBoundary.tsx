@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom';
 
 interface State { hasError: boolean; message?: string }
 
-export class AppErrorBoundary extends React.Component<React.PropsWithChildren, State> {
+export interface AppErrorBoundaryProps { children?: React.ReactNode }
+
+class AppErrorBoundary extends React.Component<AppErrorBoundaryProps, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(error: unknown): State {
