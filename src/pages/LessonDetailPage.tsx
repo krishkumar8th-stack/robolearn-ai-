@@ -48,7 +48,7 @@ export const LessonDetailPage: React.FC = () => {
             content: localLesson.theory?.join('\\n\\n') || localLesson.summary || '',
             starterCode: localLesson.codeSnippet || '',
             xpReward: 50,
-            quiz: firstQuiz
+            quiz: [firstQuiz]
           } as CourseLesson);
         } else {
           console.error(err);
