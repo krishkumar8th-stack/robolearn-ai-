@@ -28,12 +28,16 @@ export const LessonDetailPage: React.FC = () => {
   const [lesson, setLesson] = useState<CourseLesson | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [quizIndex, setQuizIndex] = useState(0);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     async function load() {
       if (!courseId || !lessonId) return;
+      setSelectedAnswer(null);
+      setQuizIndex(0);
+      setIsAnswerSubmitted(false);
       try {
         const data = await api.getLesson(courseId, lessonId);
         setLesson(data);
@@ -190,63 +194,91 @@ export const LessonDetailPage: React.FC = () => {
       )}
 
       {/* Mini Comprehension Quiz */}
-      {lesson.quiz && (
+      {lesson.quiz?.length > 0 && (
         <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <HelpCircle className="w-4 h-4 text-cyan-400" />
-            <h3 className="font-bold text-white text-sm">Knowledge Check</h3>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-200 font-medium mb-4">
-            {lesson.quiz.question}
-          </p>
+          {(() => {
+            const quiz = lesson.quiz[quizIndex] || lesson.quiz[0];
+            const isLastQuestion = quizIndex >= lesson.quiz.length - 1;
+            return (
+              <>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-cyan-400" />
+                    <h3 className="font-bold text-white text-sm">Knowledge Check</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    {quizIndex + 1}/{lesson.quiz.length}
+                  </span>
+                </div>
 
-          <div className="space-y-2">
-            {lesson.quiz.options.map((option, idx) => {
-              const isSelected = selectedAnswer === idx;
-              const isCorrect = idx === lesson.quiz?.correctIndex;
+                <p className="text-xs sm:text-sm text-slate-200 font-medium mb-4">
+                  {quiz.question}
+                </p>
 
-              let btnStyle = 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800';
-              if (isAnswerSubmitted) {
-                if (isCorrect) btnStyle = 'bg-emerald-950/60 border-emerald-600 text-emerald-300 font-bold';
-                else if (isSelected) btnStyle = 'bg-rose-950/60 border-rose-600 text-rose-300';
-              } else if (isSelected) {
-                btnStyle = 'bg-cyan-950/60 border-cyan-500 text-cyan-300 font-semibold';
-              }
+                <div className="space-y-2">
+                  {quiz.options.map((option, idx) => {
+                    const isSelected = selectedAnswer === idx;
+                    const isCorrect = idx === quiz.correctIndex;
 
-              return (
-                <button
-                  key={idx}
-                  onClick={() => !isAnswerSubmitted && setSelectedAnswer(idx)}
-                  className={`w-full p-3 rounded-xl border text-xs text-left transition flex items-center justify-between ${btnStyle}`}
-                >
-                  <span>{option}</span>
-                  {isAnswerSubmitted && isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                </button>
-              );
-            })}
-          </div>
+                    let btnStyle = 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800';
+                    if (isAnswerSubmitted) {
+                      if (isCorrect) btnStyle = 'bg-emerald-950/60 border-emerald-600 text-emerald-300 font-bold';
+                      else if (isSelected) btnStyle = 'bg-rose-950/60 border-rose-600 text-rose-300';
+                    } else if (isSelected) {
+                      btnStyle = 'bg-cyan-950/60 border-cyan-500 text-cyan-300 font-semibold';
+                    }
 
-          <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-800">
-            {isAnswerSubmitted ? (
-              <p className="text-xs text-slate-300">
-                {selectedAnswer === lesson.quiz.correctIndex ? (
-                  <span className="text-emerald-400 font-bold">Correct! Well done.</span>
-                ) : (
-                  <span className="text-rose-400 font-bold">Incorrect. Review the lesson explanation above!</span>
-                )}
-              </p>
-            ) : (
-              <span className="text-[11px] text-slate-500">Select an option and submit to test your knowledge</span>
-            )}
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => !isAnswerSubmitted && setSelectedAnswer(idx)}
+                        className={`w-full p-3 rounded-xl border text-xs text-left transition flex items-center justify-between ${btnStyle}`}
+                      >
+                        <span>{option}</span>
+                        {isAnswerSubmitted && isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <button
-              onClick={() => setIsAnswerSubmitted(true)}
-              disabled={selectedAnswer === null || isAnswerSubmitted}
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg text-xs transition"
-            >
-              Check Answer
-            </button>
-          </div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                  {isAnswerSubmitted ? (
+                    <div className="text-xs">
+                      {selectedAnswer === quiz.correctIndex ? (
+                        <span className="text-emerald-400 font-bold">Correct! Well done.</span>
+                      ) : (
+                        <span className="text-rose-400 font-bold">Incorrect. Review the lesson explanation above.</span>
+                      )}
+                      <p className="mt-1 text-slate-500">{quiz.explanation}</p>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-500">Select an option and submit to test your knowledge</span>
+                  )}
+
+                  {!isAnswerSubmitted ? (
+                    <button
+                      onClick={() => setIsAnswerSubmitted(true)}
+                      disabled={selectedAnswer === null}
+                      className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg text-xs transition"
+                    >
+                      Check Answer
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedAnswer(null);
+                        setIsAnswerSubmitted(false);
+                        if (!isLastQuestion) setQuizIndex((index) => index + 1);
+                      }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition"
+                    >
+                      {isLastQuestion ? 'Review Complete' : 'Next Question'}
+                    </button>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
