@@ -52,6 +52,43 @@ export const geminiService = {
     return { status: hasKey ? 'configured' : 'missing_api_key', hasKey, model: PRIMARY_MODEL, searchGrounding: hasKey };
   },
 
+  async translateTexts(texts: string[], targetLanguage: string): Promise<string[]> {
+    const ai = getGeminiClient();
+    const safeTexts = Array.isArray(texts)
+      ? texts
+          .filter((text) => typeof text === 'string' && text.trim())
+          .slice(0, 35)
+          .map((text) => text.slice(0, 500))
+      : [];
+
+    if (!safeTexts.length || !targetLanguage || targetLanguage === 'en') {
+      return safeTexts;
+    }
+
+    const prompt = 'Translate each item from English into ' + targetLanguage + '. Return a JSON array with exactly the same number of items and preserve the order. Do not explain, summarize, merge, or omit anything. Preserve code identifiers, URLs, email addresses, numbers, units, keyboard shortcuts, product/model names, and technical symbols where appropriate.\\n\\nINPUT:\\n' + JSON.stringify(safeTexts);
+
+    const response = await ai.models.generateContent({
+      model: FAST_MODEL,
+      contents: prompt,
+      config: {
+        systemInstruction: 'You are a precise software localization engine. Produce natural, UI-friendly translations in the requested language. Preserve code, URLs, emails, numbers, units and product/model names when translation would be incorrect.',
+        responseMimeType: 'application/json',
+      },
+    });
+
+    try {
+      const parsed = JSON.parse(cleanJsonText(response.text || '[]'));
+      if (!Array.isArray(parsed) || parsed.length !== safeTexts.length) {
+        throw new Error('Invalid translation array.');
+      }
+      return parsed.map((item, index) =>
+        typeof item === 'string' && item.trim() ? item.trim() : safeTexts[index]
+      );
+    } catch {
+      throw new Error('AI returned an invalid translation response. Please retry.');
+    }
+  },
+
   async chatTutor(
     userMessage: string,
     history: AIChatMessage[] = [],
