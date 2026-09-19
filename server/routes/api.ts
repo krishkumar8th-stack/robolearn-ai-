@@ -298,6 +298,19 @@ router.get('/achievements', async (_req: Request, res: Response) => res.json(awa
 
 // ---------------- REAL GEMINI AI APIS ----------------
 router.get('/ai/health', async (_req: Request, res: Response) => res.json(await geminiService.checkHealth()));
+router.post('/ai/translate', aiLimiter, async (req: Request, res: Response) => {
+  const texts = Array.isArray(req.body?.texts)
+    ? req.body.texts
+        .filter((value: unknown) => typeof value === 'string')
+        .slice(0, 35)
+        .map((value: string) => value.slice(0, 500))
+    : [];
+  const targetLanguage = normalizeText(req.body?.targetLanguage, 40);
+  if (!texts.length) return res.status(400).json({ error: 'Translation texts are required.' });
+  if (!targetLanguage) return res.status(400).json({ error: 'Target language is required.' });
+  return res.json(await geminiService.translateTexts(texts, targetLanguage));
+});
+
 router.post('/ai/tutor', aiLimiter, async (req: Request, res: Response) => {
   const message = normalizeText(req.body?.message, 12_000);
   if (!message) return res.status(400).json({ error: 'Message is required.' });
