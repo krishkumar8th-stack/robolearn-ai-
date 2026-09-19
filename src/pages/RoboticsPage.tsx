@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle2, Lock, ArrowRight, Clock, Trophy, Zap, Target, BrainCircuit, Cpu } from 'lucide-react';
+import { BookOpen, CheckCircle2, Lock, ArrowRight, Clock, Trophy, Zap, Target, BrainCircuit, Cpu, Flame, Play, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { THREE_LEVEL_ROBOTICS, ROBOTICS_LEVEL_RULES, ROBOTICS_XP } from '../data/threeLevelRobotics';
 
@@ -38,6 +38,88 @@ export const RoboticsPage: React.FC = () => {
           <div className="rounded-2xl bg-slate-900 border border-slate-800 px-5 py-4 min-w-[250px]"><div className="flex justify-between text-xs text-slate-400"><span>Overall progress</span><span className="text-cyan-400 font-bold">{overallPct}%</span></div><div className="h-2 bg-slate-800 rounded-full mt-2 overflow-hidden"><div className="h-full bg-cyan-500" style={{ width: `${overallPct}%` }} /></div><div className="flex justify-between mt-2 text-[11px] text-slate-500"><span>{totalCompleted}/{totalModules} modules</span><span>{xp.toLocaleString()} XP</span></div></div>
         </div>
       </header>
+
+
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] mb-8">
+        <div className="rounded-3xl border border-slate-800 bg-[#0b1018] p-5 sm:p-6 shadow-xl shadow-black/10">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
+            <div>
+              <div className="flex items-center gap-2 text-cyan-400 text-[11px] font-black uppercase tracking-widest">
+                <Star className="w-4 h-4" /> Learning Journey
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">Build your robotics streak</h2>
+              <p className="text-xs text-slate-500 mt-1">A bite-sized path: learn → practice → unlock → build.</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2">
+              <Flame className="w-4 h-4 text-orange-400" />
+              <div><div className="text-sm font-black text-white">{user?.streak ?? 0} days</div><div className="text-[9px] uppercase tracking-wider text-slate-500">Streak</div></div>
+            </div>
+          </div>
+
+          <div className="relative overflow-x-auto pb-3">
+            <div className="min-w-[760px] px-2 py-3">
+              <div className="absolute left-8 right-8 top-[63px] h-1 rounded-full bg-slate-800" aria-hidden="true" />
+              <div className="relative grid grid-cols-9 gap-3">
+                {THREE_LEVEL_ROBOTICS.flatMap((course) => course.lessons).slice(0, 9).map((lesson, index) => {
+                  const allLessons = THREE_LEVEL_ROBOTICS.flatMap((course) => course.lessons);
+                  const done = completedLessons.has(lesson.id);
+                  const previousDone = index === 0 || completedLessons.has(allLessons[index - 1]?.id);
+                  const next = !done && previousDone;
+                  const course = THREE_LEVEL_ROBOTICS.find((item) => item.id === lesson.courseId);
+                  const canOpen = isOwner || getLevelState(lesson.level) === 'unlocked';
+                  const open = canOpen && (index === 0 || previousDone);
+                  return (
+                    <div key={lesson.id} className="relative flex flex-col items-center text-center">
+                      <Link
+                        to={open ? '/learn/' + lesson.courseId + '/' + lesson.id : '#'}
+                        onClick={(e) => { if (!open) e.preventDefault(); }}
+                        className={'relative z-10 grid h-12 w-12 place-items-center rounded-full border-4 border-[#0b1018] transition ' + (done ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20' : next ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/30 scale-105' : canOpen ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-800 text-slate-600')}
+                        title={lesson.title}
+                        aria-label={'Open ' + lesson.title}
+                      >
+                        {done ? <CheckCircle2 className="w-5 h-5" /> : next ? <Play className="w-4 h-4 fill-current" /> : canOpen ? <BookOpen className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </Link>
+                      <div className="mt-3 w-[82px]">
+                        <div className={'text-[9px] font-black uppercase tracking-wide ' + (done ? 'text-emerald-400' : next ? 'text-cyan-400' : 'text-slate-500')}>{done ? 'Done' : next ? 'Next' : 'Step ' + (index + 1)}</div>
+                        <p className="mt-1 text-[10px] font-bold leading-4 text-slate-300 line-clamp-2">{lesson.title}</p>
+                        <p className="mt-1 text-[9px] text-slate-600">{course?.title || 'Robotics'}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-black/10">
+          <div className="flex items-center justify-between">
+            <div><div className="text-[10px] font-black uppercase tracking-widest text-amber-400">Today's Focus</div><h3 className="mt-1 text-lg font-black text-white">3 quick missions</h3></div>
+            <Target className="w-5 h-5 text-cyan-400" />
+          </div>
+          <div className="mt-5 space-y-3">
+            <Link to={THREE_LEVEL_ROBOTICS[0]?.lessons[0] ? '/learn/' + THREE_LEVEL_ROBOTICS[0].id + '/' + THREE_LEVEL_ROBOTICS[0].lessons[0].id : '/learn'} className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 hover:border-cyan-500/40 transition">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-500/10 text-cyan-400"><BookOpen className="w-4 h-4" /></div>
+              <div className="min-w-0"><p className="text-xs font-bold text-white">Finish the next lesson</p><p className="text-[10px] text-slate-500">Keep your path moving</p></div>
+              <ArrowRight className="ml-auto w-4 h-4 text-slate-600" />
+            </Link>
+            <Link to="/challenges" className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 hover:border-cyan-500/40 transition">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-amber-400"><Zap className="w-4 h-4" /></div>
+              <div className="min-w-0"><p className="text-xs font-bold text-white">Solve one challenge</p><p className="text-[10px] text-slate-500">Earn XP through practice</p></div>
+              <ArrowRight className="ml-auto w-4 h-4 text-slate-600" />
+            </Link>
+            <Link to="/lab3d" className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 hover:border-cyan-500/40 transition">
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-400"><Cpu className="w-4 h-4" /></div>
+              <div className="min-w-0"><p className="text-xs font-bold text-white">Run a 3D experiment</p><p className="text-[10px] text-slate-500">See your code move hardware</p></div>
+              <ArrowRight className="ml-auto w-4 h-4 text-slate-600" />
+            </Link>
+          </div>
+          <div className="mt-5 rounded-2xl bg-slate-950/80 border border-slate-800 p-3">
+            <div className="flex items-center justify-between text-[10px]"><span className="text-slate-500">XP to next level</span><span className="font-bold text-cyan-400">{nextThreshold ? Math.max(0, nextThreshold - xp).toLocaleString() : 'MAX'}</span></div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-cyan-500" style={{ width: nextThreshold ? Math.min(100, (xp / nextThreshold) * 100) + '%' : '100%' }} /></div>
+          </div>
+        </aside>
+      </section>
 
       <div className="grid grid-cols-3 gap-2 mb-8 max-w-3xl">
         {levelNames.map((name, index) => { const unlocked = getLevelState(index + 1) === 'unlocked'; const Icon = levelMeta[name].icon; return <div key={name} className={`rounded-xl border p-3 ${unlocked ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-slate-800 bg-slate-900/50'}`}><div className="flex items-center gap-2"><Icon className={`w-4 h-4 ${unlocked ? 'text-cyan-400' : 'text-slate-600'}`} /><span className="text-[10px] sm:text-xs font-black">{name}</span>{!unlocked && <Lock className="w-3 h-3 ml-auto text-slate-600" />}</div><div className="text-[10px] text-slate-500 mt-1">{index === 0 ? 'Start here' : `${levelMeta[name].threshold.toLocaleString()} XP`}</div></div>; })}
