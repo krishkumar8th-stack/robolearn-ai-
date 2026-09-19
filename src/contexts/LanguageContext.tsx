@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SupportedLanguage, SUPPORTED_LANGUAGES, getTranslation, LanguageMeta } from '../i18n/index';
+import { useAuth } from './AuthContext';
 
 interface LanguageContextType {
   currentLanguage: SupportedLanguage;
@@ -21,19 +22,34 @@ const getInitialLanguage = (): SupportedLanguage => {
 };
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, updateProfile } = useAuth();
   const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(getInitialLanguage);
 
   const currentMeta = SUPPORTED_LANGUAGES.find((language) => language.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     localStorage.setItem('roblearn_lang', currentLanguage);
     document.documentElement.lang = currentLanguage;
     document.documentElement.dir = currentMeta.dir || 'ltr';
   }, [currentLanguage, currentMeta]);
 
+  // A signed-in user's saved language is the source of truth across refreshes/devices.
+  useEffect(() => {
+    const savedLanguage = user?.preferredLanguage;
+    if (isSupportedLanguage(savedLanguage) && savedLanguage !== currentLanguage) {
+      setCurrentLanguageState(savedLanguage);
+    }
+  }, [user?.preferredLanguage, currentLanguage]);
+
   const setLanguage = (lang: SupportedLanguage) => {
-    if (!SUPPORTED_LANGUAGES.some((language) => language.code === lang)) return;
+    if (!isSupportedLanguage(lang) || lang === currentLanguage) return;
     setCurrentLanguageState(lang);
+    if (user) {
+      void updateProfile({ preferredLanguage: lang }).catch(() => {
+        // Keep the local selection even when persistence is temporarily unavailable.
+      });
+    }
   };
 
   const t = (key: string) => getTranslation(key, currentLanguage);
