@@ -3,6 +3,7 @@ import { Bot, Check, ChevronDown, Copy, MessageSquarePlus, RotateCcw, Send, Sett
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { AIChatMessage } from '../types/index';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const STORAGE_KEY = 'roblearn_ai_tutor_history_v2';
 const SAMPLE_QUESTIONS = [
@@ -56,6 +57,7 @@ function renderContent(content: string, onCopy: (code: string) => void) {
 
 export const AITutorPage: React.FC = () => {
   const { user } = useAuth();
+  const { currentMeta } = useLanguage();
   const [chats, setChats] = useState<Chat[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -127,6 +129,7 @@ export const AITutorPage: React.FC = () => {
         currentLesson: 'General AI learning assistant',
         hardware: selectedHardware,
         mode,
+        language: currentMeta.name,
       });
       updateActiveChat(chat => ({
         ...chat,
@@ -154,6 +157,7 @@ export const AITutorPage: React.FC = () => {
         currentLesson: 'General AI learning assistant',
         hardware: selectedHardware,
         mode,
+        language: currentMeta.name,
       });
       updateActiveChat(chat => ({ ...chat, messages: [...withoutLastAssistant, { id: `a-${Date.now()}`, sender: 'assistant', content: res.reply, timestamp: new Date().toISOString() }] }));
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not regenerate the answer.'); }
