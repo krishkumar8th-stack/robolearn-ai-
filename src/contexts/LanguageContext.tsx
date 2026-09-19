@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { SupportedLanguage, SUPPORTED_LANGUAGES, getTranslation, LanguageMeta } from '../i18n/index';
 import { useAuth } from './AuthContext';
 
@@ -24,6 +24,7 @@ const getInitialLanguage = (): SupportedLanguage => {
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, updateProfile } = useAuth();
   const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>(getInitialLanguage);
+  const pendingLanguageRef = useRef<SupportedLanguage | null>(null);
 
   const currentMeta = SUPPORTED_LANGUAGES.find((language) => language.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
 
@@ -37,13 +38,26 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // A signed-in user's saved language is the source of truth across refreshes/devices.
   useEffect(() => {
     const savedLanguage = user?.preferredLanguage;
-    if (isSupportedLanguage(savedLanguage) && savedLanguage !== currentLanguage) {
+    if (!isSupportedLanguage(savedLanguage)) return;
+
+    // Do not let the user's previous server value overwrite an optimistic
+    // selection while that preference is being persisted.
+    if (pendingLanguageRef.current) {
+      if (savedLanguage === pendingLanguageRef.current) {
+        pendingLanguageRef.current = null;
+      }
+      return;
+    }
+
+    if (savedLanguage !== currentLanguage) {
       setCurrentLanguageState(savedLanguage);
     }
   }, [user?.preferredLanguage, currentLanguage]);
 
   const setLanguage = (lang: SupportedLanguage) => {
-    if (!isSupportedLanguage(lang) || lang === currentLanguage) return;
+    if (!isSupportedLanguage(lang)) return;
+    if (lang === currentLanguage) return;
+    pendingLanguageRef.current = lang;
     setCurrentLanguageState(lang);
     if (user) {
       void updateProfile({ preferredLanguage: lang }).catch(() => {
